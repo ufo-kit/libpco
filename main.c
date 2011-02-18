@@ -69,7 +69,10 @@ typedef struct pco_edge_t {
     PCO_SC2_TIMEOUTS timeouts;
     PCO_SC2_CL_TRANSFER_PARAM_I transfer;
     SC2_Camera_Description_Response description;
+    SC2_Firmware_Versions_Response firmware_version;
+    SC2_Temperature_Response temperature;
 } pco_edge;
+
 
 #define PCO_ERROR_LOG(s) { printf("pco: %s <%s:%i>\n", s, __FILE__, __LINE__); }
 
@@ -247,6 +250,18 @@ unsigned int pco_retrieve_cl_config(struct pco_edge_t *pco)
     return err;
 }
 
+
+#define DEFINE_PCO_ACCESS(name, code, target) \
+unsigned int pco_##name(struct pco_edge_t *pco) \
+{                                                   \
+    SC2_Simple_Telegram com;                        \
+    com.wCode = code;                               \
+    com.wSize = sizeof(com);                        \
+    return pco_control_command(pco, &com, sizeof(com), &target, sizeof(target)); \
+}
+
+DEFINE_PCO_ACCESS(retrieve_temperature, GET_TEMPERATURE, pco->temperature);
+
 int main(int argc, char const* argv[])
 {
     static const char *applet = "libFullAreaGray8.so";
@@ -294,6 +309,11 @@ int main(int argc, char const* argv[])
 
     if (pco_retrieve_cl_config(&pco) == PCO_NOERROR)
         printf(" Clock frequency: %i\n", pco.transfer.ClockFrequency);
+
+    if (pco_retrieve_temperature(&pco) == PCO_NOERROR) {
+        printf(" CCD temperature: %i\n", pco.temperature.sCCDtemp);
+        printf(" Camera temperature: %i\n", pco.temperature.sCamtemp);
+    }
 
     for (int i = 0; (i < 4) && (pco.serial_refs[i] != NULL); i++)
         clSerialClose(pco.serial_refs[i]);
