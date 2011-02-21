@@ -116,7 +116,7 @@ int main(int argc, char const* argv[])
     }
 
     SC2_Delay_Exposure_Response delay_exposure;
-    if (pco_read_property(&pco, GET_TEMPERATURE, &temperature, sizeof(temperature)) == PCO_NOERROR) {
+    if (pco_read_property(&pco, GET_DELAY_EXPOSURE_TIME, &delay_exposure, sizeof(delay_exposure)) == PCO_NOERROR) {
         printf(" Delay: %u\n", (uint32_t) delay_exposure.dwDelay);
         printf(" Exposure: %u\n", (uint32_t) delay_exposure.dwExposure);
     }
