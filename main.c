@@ -96,6 +96,7 @@ int main(int argc, char const* argv[])
     printf(" Scanning for baud rate... ");
     fflush(stdout);
     pco_scan_and_set_baud_rate(pco);
+    printf("using %i Bd/s\n", pco->baud_rate);
 
     SC2_Camera_Name_Response name;
     if (pco_read_property(pco, GET_CAMERA_NAME, &name, sizeof(name)) == PCO_NOERROR)

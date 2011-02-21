@@ -213,14 +213,9 @@ unsigned int pco_scan_and_set_baud_rate(struct pco_edge_t *pco)
         check_error_cl(clSetBaudRate(pco->serial_ref, baudrates[idx][0]));
         pco_msleep(150);
         err = pco_control_command(pco, &com, sizeof(com), &resp, sizeof(SC2_Camera_Type_Response));
-        if (err != PCO_NOERROR) {
-            printf("-%i ", baudrates[idx][1]);
+        if (err != PCO_NOERROR)
             idx++;
-        }
-        else
-            printf("+%i ", baudrates[idx][1]);
     }
-    printf("\n");
     pco->baud_rate = baudrates[idx][1];
 
     /* XXX: in the original code, SC2_Set_CL_Baudrate telegrams were send.
