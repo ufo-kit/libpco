@@ -72,7 +72,7 @@ unsigned int pco_control_command(struct pco_edge_t *pco,
     unsigned char buffer[PCO_SC2_DEF_BLOCK_SIZE];
     unsigned int size;
     uint16_t com_in, com_out;
-    uint32_t err;
+    uint32_t err = PCO_NOERROR;
 
     check_error_cl(clFlushPort(pco->serial_ref));
     com_out = 0;
@@ -102,16 +102,17 @@ unsigned int pco_control_command(struct pco_edge_t *pco,
     if ((size < 0) || (com_in != (com_out & 0xFF3F)))
         return PCO_ERROR_DRIVER_IOFAILURE | PCO_ERROR_DRIVER_CAMERALINK;
 
-    clSerialRead(pco->serial_ref, (char *) &buffer[sizeof(uint16_t)*2], &size, pco->timeouts.command*2);
+    err = clSerialRead(pco->serial_ref, (char *) &buffer[sizeof(uint16_t)*2], &size, pco->timeouts.command*2);
+    if (err < 0) 
+        return PCO_ERROR_DRIVER_IOFAILURE | PCO_ERROR_DRIVER_CAMERALINK;
 
-    err = PCO_NOERROR;
     com_out = *((uint16_t *) buffer);
     if ((com_out & RESPONSE_ERROR_CODE) == RESPONSE_ERROR_CODE) {
         SC2_Failure_Response resp;
         memcpy(&resp, buffer, sizeof(SC2_Failure_Response));
         err = resp.dwerrmess;
         if ((resp.dwerrmess & 0xC000FFFF) == PCO_ERROR_FIRMWARE_NOT_SUPPORTED)
-            ;
+            ;   /* TODO: log message here */
         else
             ;
         size = sizeof(SC2_Failure_Response);
@@ -157,7 +158,7 @@ unsigned int pco_retrieve_baud_rate(struct pco_edge_t *pco)
     int baudrate_index = 0;
     while ((err != PCO_NOERROR) && (baudrates[baudrate_index] != 0)) {
         check_error_cl(clSetBaudRate(pco->serial_ref, baudrates[baudrate_index]));
-        sleep(150);
+        sleep(1);
         err = pco_control_command(pco, &com, sizeof(com), &resp, sizeof(SC2_Camera_Type_Response));
         if (err != PCO_NOERROR)
             baudrate_index++;
@@ -296,7 +297,7 @@ unsigned int pco_set_rec_state(struct pco_edge_t *pco, uint16_t state)
             if(g_state == state)
                 break;
 
-            sleep(50);
+            usleep(50);
         }
         if(x >= ns)
             err=PCO_ERROR_TIMEOUT;
@@ -342,7 +343,7 @@ unsigned int pco_arm_camera(struct pco_edge_t *pco)
 {
   SC2_Arm_Camera_Response resp;
   SC2_Simple_Telegram com;
-  unsigned int err=PCO_NOERROR;
+  unsigned int err = PCO_NOERROR;
   /* FIXME: is timeout setting neccessary? */
   /*uint32_t time=5000;*/
 

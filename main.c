@@ -42,6 +42,24 @@ void print_parameters(Fg_Struct *fg, unsigned int dma_index)
     }
 }
 
+void pcofg_set_size(struct pco_edge_t *pco, Fg_Struct *fg, int width, int height)
+{
+    int w = width;
+    uint32_t format = pco->transfer.DataFormat & PCO_CL_DATAFORMAT_MASK; 
+
+    /* FIXME: The following code is in the original code also. However, w is
+     * never used again after assignment.*/
+    switch (format) {
+        case PCO_CL_DATAFORMAT_4x16:
+        case PCO_CL_DATAFORMAT_5x16:
+            w *= 2;
+            break;
+        case PCO_CL_DATAFORMAT_5x12:
+            w *= 12;
+            w /= 16;
+            break;
+    }
+}
 
 int main(int argc, char const* argv[])
 {
@@ -96,6 +114,12 @@ int main(int argc, char const* argv[])
         printf(" Camera temperature: %i°C\n", temperature.sCamtemp);
         printf(" Power supply temperature: %i°C\n", temperature.sPStemp);
     }
+
+    SC2_Delay_Exposure_Response delay_exposure;
+    if (pco_read_property(&pco, GET_TEMPERATURE, &temperature, sizeof(temperature)) == PCO_NOERROR) {
+        printf(" Delay: %u\n", (uint32_t) delay_exposure.dwDelay);
+        printf(" Exposure: %u\n", (uint32_t) delay_exposure.dwExposure);
+    }
    
     SC2_Pixelrate_Response pixelrate;
     if (pco_read_property(&pco, GET_PIXELRATE, &pixelrate, sizeof(pixelrate)) == PCO_NOERROR)
@@ -119,6 +143,9 @@ int main(int argc, char const* argv[])
         if (pco_set_cl_config(&pco) != PCO_NOERROR)
             PCO_ERROR_LOG("Setting CameraLink config failed");
     }
+
+    if (pco_arm_camera(&pco) != PCO_NOERROR)
+        PCO_ERROR_LOG("Couldn't ARM camera\n");
 
     uint32_t width, height;
     if (pco_get_actual_size(&pco, &width, &height) == PCO_NOERROR) {
@@ -165,14 +192,17 @@ int main(int argc, char const* argv[])
     }
 
     pco_set_rec_state(&pco, 1);
-    sleep(150);
-    check_error_fg(fg, Fg_AcquireEx(fg, 0, 4, ACQ_BLOCK, mem));
-    frameindex_t last_frame = Fg_getLastPicNumberEx(fg, PORT_A, mem);
+    sleep(1);
+    printf(" acquire image...");
+    fflush(stdout);
+    check_error_fg(fg, Fg_AcquireEx(fg, 0, 4, ACQ_STANDARD, mem));
+    frameindex_t last_frame = Fg_getLastPicNumberBlockingEx(fg, 4, PORT_A, 5, mem);
+    printf(" done.\n");
     if (last_frame < 0) {
         printf(" Couldn't retrieve last frame\n");
     }
     else {
-        uint16_t *frame = (uint16_t *) Fg_getImagePtrEx(fg, 1, PORT_A, mem);
+        uint16_t *frame = (uint16_t *) Fg_getImagePtrEx(fg, last_frame, PORT_A, mem);
         printf("%p\n", frame);
         FILE *fp = fopen("out.raw", "wb");
         fwrite(frame, 2*width*height, 1, fp);
