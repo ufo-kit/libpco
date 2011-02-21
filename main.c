@@ -64,17 +64,16 @@ void pcofg_set_size(struct pco_edge_t *pco, Fg_Struct *fg, int width, int height
 int main(int argc, char const* argv[])
 {
     static const char *applet = "libFullAreaGray8.so";
-    struct pco_edge_t pco;
 
     /* CameraLink specific */
     printf("--- CameraLink ---------\n");
-    pco_init(&pco);
+    struct pco_edge_t *pco = pco_init();
 
     unsigned int buffer_size, version, err;
     char str[256];
 
-    printf(" Ports: %i\n", pco.num_ports);
-    for (int i = 0; i < pco.num_ports; i++) {
+    printf(" Ports: %i\n", pco->num_ports);
+    for (int i = 0; i < pco->num_ports; i++) {
         check_error_cl(clGetSerialPortIdentifier(i, str, &buffer_size));
         printf("  Port Identifier (Port %i): %s\n", i, str);
     }
@@ -86,9 +85,9 @@ int main(int argc, char const* argv[])
     /* Query properties and output them */
     printf("\n--- Camera ----------\n");
     printf(" Active: ");
-    if (!pco_active(&pco)) {
+    if (!pco_active(pco)) {
         printf("no\n");
-        pco_destroy(&pco);
+        pco_destroy(pco);
         return 1;
     }
     else
@@ -96,61 +95,61 @@ int main(int argc, char const* argv[])
 
     printf(" Scanning for baud rate... ");
     fflush(stdout);
-    pco_scan_and_set_baud_rate(&pco);
+    pco_scan_and_set_baud_rate(pco);
 
     SC2_Camera_Name_Response name;
-    if (pco_read_property(&pco, GET_CAMERA_NAME, &name, sizeof(name)) == PCO_NOERROR)
+    if (pco_read_property(pco, GET_CAMERA_NAME, &name, sizeof(name)) == PCO_NOERROR)
         printf("\n Camera name: %s\n", name.szName);
 
-    err = pco_read_property(&pco, GET_CAMERA_DESCRIPTION, &pco.description, sizeof(pco.description));
+    err = pco_read_property(pco, GET_CAMERA_DESCRIPTION, &pco->description, sizeof(pco->description));
     if (err != PCO_NOERROR)
         PCO_ERROR_LOG("GET_CAMERA_DESCRIPTION failed");
 
-    if (pco_retrieve_cl_config(&pco) == PCO_NOERROR)
-        printf(" Clock frequency: %i MHz\n", pco.transfer.ClockFrequency/1000000);
+    if (pco_retrieve_cl_config(pco) == PCO_NOERROR)
+        printf(" Clock frequency: %i MHz\n", pco->transfer.ClockFrequency/1000000);
 
     SC2_Temperature_Response temperature;
-    if (pco_read_property(&pco, GET_TEMPERATURE, &temperature, sizeof(temperature)) == PCO_NOERROR) {
+    if (pco_read_property(pco, GET_TEMPERATURE, &temperature, sizeof(temperature)) == PCO_NOERROR) {
         printf(" CCD temperature: %i°C\n", temperature.sCCDtemp);
         printf(" Camera temperature: %i°C\n", temperature.sCamtemp);
         printf(" Power supply temperature: %i°C\n", temperature.sPStemp);
     }
 
-    pco_set_delay_exposure(&pco, 1000, 5000);
+    pco_set_delay_exposure(pco, 1000, 5000);
     SC2_Delay_Exposure_Response de;
-    if (pco_read_property(&pco, GET_DELAY_EXPOSURE_TIME, &de, sizeof(de)) == PCO_NOERROR) {
+    if (pco_read_property(pco, GET_DELAY_EXPOSURE_TIME, &de, sizeof(de)) == PCO_NOERROR) {
         printf(" Delay: %u µs\n", (uint32_t) de.dwDelay);
         printf(" Exposure: %u µs\n", (uint32_t) de.dwExposure);
     }
    
     SC2_Pixelrate_Response pixelrate;
-    if (pco_read_property(&pco, GET_PIXELRATE, &pixelrate, sizeof(pixelrate)) == PCO_NOERROR)
+    if (pco_read_property(pco, GET_PIXELRATE, &pixelrate, sizeof(pixelrate)) == PCO_NOERROR)
         printf(" Pixel rate: %i\n", pixelrate.dwPixelrate);
 
     /* Setup for recording */
-    if (pco_set_rec_state(&pco, 0) != PCO_NOERROR)
+    if (pco_set_rec_state(pco, 0) != PCO_NOERROR)
         PCO_ERROR_LOG("SET RECORDING STATE failed");
 
-    if (pco_set_timestamp_mode(&pco, 2) != PCO_NOERROR)
+    if (pco_set_timestamp_mode(pco, 2) != PCO_NOERROR)
         PCO_ERROR_LOG("SET TIMESTAMP failed");
 
-    if (pco_set_timebase(&pco, 1, 1) != PCO_NOERROR)
+    if (pco_set_timebase(pco, 1, 1) != PCO_NOERROR)
         PCO_ERROR_LOG("SET TIMEBASE failed");
 
     /* XXX: here followed pco_set_delay_exposure() with unknown values */
 
-    if (pco.transfer.DataFormat != (SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER|PCO_CL_DATAFORMAT_5x12)) {
-        pco.transfer.DataFormat = SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x12;
+    if (pco->transfer.DataFormat != (SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER|PCO_CL_DATAFORMAT_5x12)) {
+        pco->transfer.DataFormat = SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x12;
 
-        if (pco_set_cl_config(&pco) != PCO_NOERROR)
+        if (pco_set_cl_config(pco) != PCO_NOERROR)
             PCO_ERROR_LOG("Setting CameraLink config failed");
     }
 
-    if (pco_arm_camera(&pco) != PCO_NOERROR)
+    if (pco_arm_camera(pco) != PCO_NOERROR)
         PCO_ERROR_LOG("Couldn't ARM camera\n");
 
     uint32_t width, height;
-    if (pco_get_actual_size(&pco, &width, &height) == PCO_NOERROR) {
+    if (pco_get_actual_size(pco, &width, &height) == PCO_NOERROR) {
         printf(" Dimensions: %ix%i\n", width, height);
     }
 
@@ -188,7 +187,7 @@ int main(int argc, char const* argv[])
         printf(" Couldn't allocate buffer memory\n");
     }
 
-    pco_set_rec_state(&pco, 1);
+    pco_set_rec_state(pco, 1);
     sleep(1);
     printf(" Acquire image...");
     fflush(stdout);
@@ -209,7 +208,7 @@ int main(int argc, char const* argv[])
     check_error_fg(fg, Fg_FreeMemEx(fg, mem));
     Fg_FreeGrabber(fg);
 
-    pco_destroy(&pco);
+    pco_destroy(pco);
     
     return 0;
 }

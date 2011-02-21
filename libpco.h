@@ -25,7 +25,7 @@ typedef struct pco_edge_t {
 
 void check_error_cl(int code);
 
-void pco_init(struct pco_edge_t *pco);
+struct pco_edge_t *pco_init(void);
 void pco_destroy(struct pco_edge_t *pco);
 
 unsigned int pco_control_command(struct pco_edge_t *pco, void *buffer_in, uint32_t size_in, void *buffer_out, uint32_t size_out);

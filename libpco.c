@@ -82,8 +82,11 @@ static void pco_msleep(int time)
         PCO_ERROR_LOG("error in select");
 }
 
-void pco_init(struct pco_edge_t *pco)
+struct pco_edge_t *pco_init(void)
 {
+    /* TODO: check memory allocation */
+    struct pco_edge_t *pco = (struct pco_edge_t *) malloc(sizeof(struct pco_edge_t));
+
     pco->timeouts.command = PCO_SC2_COMMAND_TIMEOUT;
     pco->timeouts.image = PCO_SC2_IMAGE_TIMEOUT_L;
     pco->timeouts.transfer = PCO_SC2_COMMAND_TIMEOUT;
@@ -100,12 +103,14 @@ void pco_init(struct pco_edge_t *pco)
     
     /* Reference the first port for easier access */
     pco->serial_ref = pco->serial_refs[0];
+    return pco;
 }
 
 void pco_destroy(struct pco_edge_t *pco)
 {
     for (int i = 0; i < pco->num_ports; i++)
         clSerialClose(pco->serial_refs[i]);
+    free(pco);
 }
 
 unsigned int pco_control_command(struct pco_edge_t *pco,
