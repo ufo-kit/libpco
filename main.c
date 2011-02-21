@@ -100,6 +100,10 @@ int main(int argc, char const* argv[])
     fflush(stdout);
     pco_scan_and_set_baud_rate(&pco);
 
+    SC2_Camera_Name_Response name;
+    if (pco_read_property(&pco, GET_CAMERA_NAME, &name, sizeof(name)) == PCO_NOERROR)
+        printf("\n Camera name: %s\n", name.szName);
+
     err = pco_read_property(&pco, GET_CAMERA_DESCRIPTION, &pco.description, sizeof(pco.description));
     if (err != PCO_NOERROR)
         PCO_ERROR_LOG("GET_CAMERA_DESCRIPTION failed");
@@ -117,7 +121,7 @@ int main(int argc, char const* argv[])
     pco_set_delay_exposure(&pco, 1000, 5000);
     SC2_Delay_Exposure_Response de;
     if (pco_read_property(&pco, GET_DELAY_EXPOSURE_TIME, &de, sizeof(de)) == PCO_NOERROR) {
-        printf(" Delay: %u\n µs", (uint32_t) de.dwDelay);
+        printf(" Delay: %u µs\n", (uint32_t) de.dwDelay);
         printf(" Exposure: %u µs\n", (uint32_t) de.dwExposure);
     }
    
@@ -198,7 +202,6 @@ int main(int argc, char const* argv[])
     }
     else {
         uint16_t *frame = (uint16_t *) Fg_getImagePtrEx(fg, 1, PORT_A, mem);
-        printf("%p\n", frame);
         FILE *fp = fopen("out.raw", "wb");
         fwrite(frame, 2*width*height, 1, fp);
         fclose(fp);
