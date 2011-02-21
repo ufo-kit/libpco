@@ -10,8 +10,24 @@ include_directories(${FGLIB5_INCLUDE_DIR} ${CLSERME4_INCLUDE_DIR})
 
 add_definitions("--std=c99 -Wall")
 
-# --- Build library ---------------------------------------------------------
+# --- Build library and install ---------------------------------------------
 add_library(pco SHARED libpco.c)
+
+install(TARGETS pco
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib)
+
+install(FILES
+    libpco.h 
+    sc2_cl.h
+    sc2_add.h
+    sc2_command.h
+    sc2_common.h
+    sc2_telegram.h
+    sc2_drv_struct.h
+    PCO_err.h
+    
+    DESTINATION include/libpco)
 
 # --- Build test executable -------------------------------------------------
 add_executable(test main.c)
