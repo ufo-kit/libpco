@@ -25,9 +25,13 @@ typedef struct pco_edge_t {
 
 void check_error_cl(int code);
 
+void pco_init(struct pco_edge_t *pco);
+void pco_destroy(struct pco_edge_t *pco);
+
 unsigned int pco_control_command(struct pco_edge_t *pco, void *buffer_in, uint32_t size_in, void *buffer_out, uint32_t size_out);
 
-unsigned int pco_scan_and_baud_rate(struct pco_edge_t *pco);
+unsigned int pco_active(struct pco_edge_t *pco);
+unsigned int pco_scan_and_set_baud_rate(struct pco_edge_t *pco);
 unsigned int pco_retrieve_cl_config(struct pco_edge_t *pco);
 unsigned int pco_set_cl_config(struct pco_edge_t *pco);
 unsigned int pco_read_property(struct pco_edge_t *pco, uint16_t code, void *dst, uint32_t size);

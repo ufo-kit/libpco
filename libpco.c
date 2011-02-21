@@ -82,6 +82,32 @@ static void pco_msleep(int time)
         PCO_ERROR_LOG("error in select");
 }
 
+void pco_init(struct pco_edge_t *pco)
+{
+    pco->timeouts.command = PCO_SC2_COMMAND_TIMEOUT;
+    pco->timeouts.image = PCO_SC2_IMAGE_TIMEOUT_L;
+    pco->timeouts.transfer = PCO_SC2_COMMAND_TIMEOUT;
+
+    for (int i = 0; i < 4; i++)
+        pco->serial_refs[i] = NULL;
+
+    clGetNumSerialPorts(&pco->num_ports);
+    if (pco->num_ports > 4)
+        pco->num_ports = 4;
+
+    for (int i = 0; i < pco->num_ports; i++)
+        check_error_cl(clSerialInit(i, &pco->serial_refs[i]));
+    
+    /* Reference the first port for easier access */
+    pco->serial_ref = pco->serial_refs[0];
+}
+
+void pco_destroy(struct pco_edge_t *pco)
+{
+    for (int i = 0; i < pco->num_ports; i++)
+        clSerialClose(pco->serial_refs[i]);
+}
+
 unsigned int pco_control_command(struct pco_edge_t *pco,
         void *buffer_in, uint32_t size_in,
         void *buffer_out, uint32_t size_out)
@@ -150,6 +176,12 @@ unsigned int pco_control_command(struct pco_edge_t *pco,
         memcpy(buffer_out, buffer, size_out);
     }
     return err;
+}
+
+unsigned int pco_active(struct pco_edge_t *pco)
+{
+    SC2_Camera_Type_Response resp;
+    return pco_read_property(pco, GET_CAMERA_TYPE, &resp, sizeof(resp)) == PCO_NOERROR;
 }
 
 unsigned int pco_scan_and_set_baud_rate(struct pco_edge_t *pco)

@@ -64,39 +64,37 @@ void pcofg_set_size(struct pco_edge_t *pco, Fg_Struct *fg, int width, int height
 int main(int argc, char const* argv[])
 {
     static const char *applet = "libFullAreaGray8.so";
+    struct pco_edge_t pco;
 
     /* CameraLink specific */
     printf("--- CameraLink ---------\n");
-
-    struct pco_edge_t pco;
-    pco.timeouts.command = PCO_SC2_COMMAND_TIMEOUT;
-    pco.timeouts.image = PCO_SC2_IMAGE_TIMEOUT_L;
-    pco.timeouts.transfer = PCO_SC2_COMMAND_TIMEOUT;
-    for (int i = 0; i < 4; i++)
-        pco.serial_refs[i] = NULL;
+    pco_init(&pco);
 
     unsigned int buffer_size, version, err;
     char str[256];
 
-    clGetNumSerialPorts(&pco.num_ports);
     printf(" Ports: %i\n", pco.num_ports);
+    for (int i = 0; i < pco.num_ports; i++) {
+        check_error_cl(clGetSerialPortIdentifier(i, str, &buffer_size));
+        printf("  Port Identifier (Port %i): %s\n", i, str);
+    }
 
     clGetManufacturerInfo(str, &buffer_size, &version);
     printf(" Manufacturer: %s\n", str);
     printf(" Version: %x\n", version);
-
-    for (int i = 0; i < pco.num_ports && i < 4; i++) {
-        check_error_cl(clGetSerialPortIdentifier(i, str, &buffer_size));
-        printf(" Port Identifier (Port %i): %s\n", i, str);
-
-        check_error_cl(clSerialInit(i, &pco.serial_refs[i]));
-    }
-
-    /* Reference the first port for easier access */
-    pco.serial_ref = pco.serial_refs[0];
-
+    
     /* Query properties and output them */
-    printf(" scanning for baud rate... ");
+    printf("\n--- Camera ----------\n");
+    printf(" Active: ");
+    if (!pco_active(&pco)) {
+        printf("no\n");
+        pco_destroy(&pco);
+        return 1;
+    }
+    else
+        printf("yes\n");
+
+    printf(" Scanning for baud rate... ");
     fflush(stdout);
     pco_scan_and_set_baud_rate(&pco);
 
@@ -192,7 +190,7 @@ int main(int argc, char const* argv[])
 
     pco_set_rec_state(&pco, 1);
     sleep(1);
-    printf(" acquire image...");
+    printf(" Acquire image...");
     fflush(stdout);
     check_error_fg(fg, Fg_AcquireEx(fg, 0, 4, ACQ_STANDARD, mem));
     frameindex_t last_frame = Fg_getLastPicNumberBlockingEx(fg, 4, PORT_A, 5, mem);
@@ -211,8 +209,7 @@ int main(int argc, char const* argv[])
     check_error_fg(fg, Fg_FreeMemEx(fg, mem));
     Fg_FreeGrabber(fg);
 
-    for (int i = 0; (i < 4) && (pco.serial_refs[i] != NULL); i++)
-        clSerialClose(pco.serial_refs[i]);
+    pco_destroy(&pco);
     
     return 0;
 }
