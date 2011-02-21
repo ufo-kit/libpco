@@ -21,13 +21,13 @@ typedef struct pco_edge_t {
     SC2_Firmware_Versions_Response firmware_version;
 } pco_edge;
 
-#define PCO_ERROR_LOG(s) { printf("pco: %s <%s:%i>\n", s, __FILE__, __LINE__); }
+#define PCO_ERROR_LOG(s) { fprintf(stderr, "pco: %s <%s:%i>\n", s, __FILE__, __LINE__); }
 
 void check_error_cl(int code);
 
 unsigned int pco_control_command(struct pco_edge_t *pco, void *buffer_in, uint32_t size_in, void *buffer_out, uint32_t size_out);
 
-unsigned int pco_retrieve_baud_rate(struct pco_edge_t *pco);
+unsigned int pco_scan_and_baud_rate(struct pco_edge_t *pco);
 unsigned int pco_retrieve_cl_config(struct pco_edge_t *pco);
 unsigned int pco_set_cl_config(struct pco_edge_t *pco);
 unsigned int pco_read_property(struct pco_edge_t *pco, uint16_t code, void *dst, uint32_t size);

@@ -98,8 +98,7 @@ int main(int argc, char const* argv[])
     /* Query properties and output them */
     printf(" scanning for baud rate... ");
     fflush(stdout);
-    pco_retrieve_baud_rate(&pco);
-    printf("index %i\n", pco.baud_rate);
+    pco_scan_and_set_baud_rate(&pco);
 
     err = pco_read_property(&pco, GET_CAMERA_DESCRIPTION, &pco.description, sizeof(pco.description));
     if (err != PCO_NOERROR)
@@ -115,10 +114,11 @@ int main(int argc, char const* argv[])
         printf(" Power supply temperature: %i°C\n", temperature.sPStemp);
     }
 
-    SC2_Delay_Exposure_Response delay_exposure;
-    if (pco_read_property(&pco, GET_DELAY_EXPOSURE_TIME, &delay_exposure, sizeof(delay_exposure)) == PCO_NOERROR) {
-        printf(" Delay: %u\n", (uint32_t) delay_exposure.dwDelay);
-        printf(" Exposure: %u\n", (uint32_t) delay_exposure.dwExposure);
+    pco_set_delay_exposure(&pco, 1000, 5000);
+    SC2_Delay_Exposure_Response de;
+    if (pco_read_property(&pco, GET_DELAY_EXPOSURE_TIME, &de, sizeof(de)) == PCO_NOERROR) {
+        printf(" Delay: %u\n µs", (uint32_t) de.dwDelay);
+        printf(" Exposure: %u µs\n", (uint32_t) de.dwExposure);
     }
    
     SC2_Pixelrate_Response pixelrate;
@@ -177,11 +177,6 @@ int main(int argc, char const* argv[])
     val = FREE_RUN;
     check_error_fg(fg, Fg_setParameter(fg, FG_TRIGGERMODE, &val, PORT_A));
 
-    /*
-    val = 0xFFFFFFFF;
-    check_error_fg(fg, Fg_setParameter(fg, FG_TIMEOUT, &val, PORT_A));
-    */
-
     check_error_fg(fg, Fg_setParameter(fg, FG_WIDTH, &width, PORT_A));
     check_error_fg(fg, Fg_setParameter(fg, FG_HEIGHT, &height, PORT_A));
     printf(" Actual dimensions: %ix%i\n", width, height);
@@ -202,7 +197,7 @@ int main(int argc, char const* argv[])
         printf(" Couldn't retrieve last frame\n");
     }
     else {
-        uint16_t *frame = (uint16_t *) Fg_getImagePtrEx(fg, last_frame, PORT_A, mem);
+        uint16_t *frame = (uint16_t *) Fg_getImagePtrEx(fg, 1, PORT_A, mem);
         printf("%p\n", frame);
         FILE *fp = fopen("out.raw", "wb");
         fwrite(frame, 2*width*height, 1, fp);

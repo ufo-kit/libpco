@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/select.h>
 #include <clser.h>
 #include "libpco.h"
 
@@ -63,6 +64,22 @@ static uint32_t pco_test_checksum(unsigned char *buffer, int *size)
 
     *size = x + 1;
     return PCO_NOERROR;
+}
+
+static void pco_msleep(int time)
+{
+    int ret;
+    fd_set rfds;
+    struct timeval tv;
+
+    FD_ZERO(&rfds);
+    FD_SET(0, &rfds);
+
+    tv.tv_sec = time / 1000;
+    tv.tv_usec = (time % 1000) / 1000;
+    ret = select(0, NULL, NULL, NULL, &tv);
+    if (ret < 0)
+        PCO_ERROR_LOG("error in select");
 }
 
 unsigned int pco_control_command(struct pco_edge_t *pco,
@@ -135,18 +152,15 @@ unsigned int pco_control_command(struct pco_edge_t *pco,
     return err;
 }
 
-unsigned int pco_retrieve_baud_rate(struct pco_edge_t *pco)
+unsigned int pco_scan_and_set_baud_rate(struct pco_edge_t *pco)
 {
-    static uint32_t baudrates[] = { 
-        CL_BAUDRATE_9600,
-        CL_BAUDRATE_19200,
-        CL_BAUDRATE_38400,
-        CL_BAUDRATE_57600,
-        CL_BAUDRATE_115200,
-        CL_BAUDRATE_230400,
-        CL_BAUDRATE_460800,
-        CL_BAUDRATE_921600,
-        0 
+    static uint32_t baudrates[6][2] = { 
+        { CL_BAUDRATE_115200, 115200 },
+        { CL_BAUDRATE_57600, 57600 },
+        { CL_BAUDRATE_38400, 38400 },
+        { CL_BAUDRATE_19200, 19200 },
+        { CL_BAUDRATE_9600, 9600 },
+        { 0, 0 }
     };
 
     unsigned int err = PCO_NOERROR+1;
@@ -155,16 +169,25 @@ unsigned int pco_retrieve_baud_rate(struct pco_edge_t *pco)
     SC2_Camera_Type_Response resp;
     com.wCode = GET_CAMERA_TYPE;
     com.wSize = sizeof(SC2_Simple_Telegram);
-    int baudrate_index = 0;
-    while ((err != PCO_NOERROR) && (baudrates[baudrate_index] != 0)) {
-        check_error_cl(clSetBaudRate(pco->serial_ref, baudrates[baudrate_index]));
-        sleep(1);
-        err = pco_control_command(pco, &com, sizeof(com), &resp, sizeof(SC2_Camera_Type_Response));
-        if (err != PCO_NOERROR)
-            baudrate_index++;
-    }
+    int idx = 0;
 
-    pco->baud_rate = baudrates[baudrate_index];
+    while ((err != PCO_NOERROR) && (baudrates[idx][0] != 0)) {
+        check_error_cl(clSetBaudRate(pco->serial_ref, baudrates[idx][0]));
+        pco_msleep(150);
+        err = pco_control_command(pco, &com, sizeof(com), &resp, sizeof(SC2_Camera_Type_Response));
+        if (err != PCO_NOERROR) {
+            printf("-%i ", baudrates[idx][1]);
+            idx++;
+        }
+        else
+            printf("+%i ", baudrates[idx][1]);
+    }
+    printf("\n");
+    pco->baud_rate = baudrates[idx][1];
+
+    /* XXX: in the original code, SC2_Set_CL_Baudrate telegrams were send.
+     * However, doing so makes things worse and communication breaks. */
+
     return err;
 }
 
@@ -297,7 +320,7 @@ unsigned int pco_set_rec_state(struct pco_edge_t *pco, uint16_t state)
             if(g_state == state)
                 break;
 
-            usleep(50);
+            pco_msleep(50);
         }
         if(x >= ns)
             err=PCO_ERROR_TIMEOUT;
@@ -344,16 +367,11 @@ unsigned int pco_arm_camera(struct pco_edge_t *pco)
   SC2_Arm_Camera_Response resp;
   SC2_Simple_Telegram com;
   unsigned int err = PCO_NOERROR;
-  /* FIXME: is timeout setting neccessary? */
-  /*uint32_t time=5000;*/
 
-  /*Set_Timeouts(&time,sizeof(uint32_t));*/
   com.wCode = ARM_CAMERA;
   com.wSize = sizeof(SC2_Simple_Telegram);
   err = pco_control_command(pco, &com, sizeof(SC2_Simple_Telegram), &resp, sizeof(SC2_Arm_Camera_Response));
 
-  /*time=PCO_SC2_COMMAND_TIMEOUT;*/
-  /*Set_Timeouts(&time,sizeof(uint32_t));*/
   return err;
 }
 
