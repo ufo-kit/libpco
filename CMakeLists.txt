@@ -30,6 +30,6 @@ install(FILES
     DESTINATION include/libpco)
 
 # --- Build test executable -------------------------------------------------
-add_executable(test main.c)
-target_link_libraries(test pco ${FGLIB5_LIBRARY} ${CLSERME4_LIBRARY})
+add_executable(diagnose main.c)
+target_link_libraries(diagnose pco ${FGLIB5_LIBRARY} ${CLSERME4_LIBRARY})
 
