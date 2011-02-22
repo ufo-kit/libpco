@@ -1,8 +1,10 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "libpco.h"
+#include "sc2_defs.h"
 
 #include "fgrab_struct.h"
 #include "fgrab_prototyp.h"
@@ -61,9 +63,52 @@ void pcofg_set_size(struct pco_edge_t *pco, Fg_Struct *fg, int width, int height
     }
 }
 
+void decode(uint16_t *bufout, uint16_t *bufin, int width, int height)
+{
+    uint16_t a, x, y, off;
+    uint16_t *lineadr_in;
+    uint16_t *lineadr_out;
+
+    off = (width*12)/32;
+    lineadr_in = (uint16_t*) bufin;
+    lineadr_out = (uint16_t*) bufout;
+
+    for (y = 0; y < height; y++) {
+        for (x = 0; x < off;) {
+            a = (*lineadr_in&0x0000FFF0)>>4;
+            a|= (*lineadr_in&0x0000000F)<<24;
+            a|= (*lineadr_in&0xFF000000)>>8;
+            *lineadr_out=a;
+            lineadr_out++;
+
+            a = (*lineadr_in&0x00FF0000)>>12;
+            lineadr_in++;
+            x++;
+            a|= (*lineadr_in&0x0000F000)>>12;
+            a|= (*lineadr_in&0x00000FFF)<<16;
+            *lineadr_out=a;
+            lineadr_out++;
+            a = (*lineadr_in&0xFFF00000)>>20;
+            a|= (*lineadr_in&0x000F0000)<<8;
+            lineadr_in++;
+            x++;
+            a|= (*lineadr_in&0x0000FF00)<<8;
+            *lineadr_out=a;
+            lineadr_out++;
+            a = (*lineadr_in&0x000000FF)<<4;
+            a|= (*lineadr_in&0xF0000000)>>28;
+            a|= (*lineadr_in&0x0FFF0000);
+            *lineadr_out=a;
+            lineadr_out++;
+            lineadr_in++;
+            x++;
+        }
+    }
+}
+
 int main(int argc, char const* argv[])
 {
-    static const char *applet = "libFullAreaGray8.so";
+    static const char *applet = "libDualAreaGray16.so";
 
     /* CameraLink specific */
     printf("--- CameraLink ---------\n");
@@ -106,8 +151,11 @@ int main(int argc, char const* argv[])
     if (err != PCO_NOERROR)
         PCO_ERROR_LOG("GET_CAMERA_DESCRIPTION failed");
 
-    if (pco_retrieve_cl_config(pco) == PCO_NOERROR)
+    if (pco_retrieve_cl_config(pco) == PCO_NOERROR) {
         printf(" Clock frequency: %i MHz\n", pco->transfer.ClockFrequency/1000000);
+        printf(" Data format: 0x0%x\n", (pco->transfer.DataFormat & PCO_CL_DATAFORMAT_MASK));
+        printf(" Transmit continuously: %s\n", (pco->transfer.Transmit ? "yes" : "no"));
+    }
 
     SC2_Temperature_Response temperature;
     if (pco_read_property(pco, GET_TEMPERATURE, &temperature, sizeof(temperature)) == PCO_NOERROR) {
@@ -131,7 +179,7 @@ int main(int argc, char const* argv[])
     if (pco_set_rec_state(pco, 0) != PCO_NOERROR)
         PCO_ERROR_LOG("SET RECORDING STATE failed");
 
-    if (pco_set_timestamp_mode(pco, 2) != PCO_NOERROR)
+    if (pco_set_timestamp_mode(pco, TIMESTAMP_MODE_BINARYANDASCII) != PCO_NOERROR)
         PCO_ERROR_LOG("SET TIMESTAMP failed");
 
     if (pco_set_timebase(pco, 1, 1) != PCO_NOERROR)
@@ -139,9 +187,8 @@ int main(int argc, char const* argv[])
 
     /* XXX: here followed pco_set_delay_exposure() with unknown values */
 
-    if (pco->transfer.DataFormat != (SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER|PCO_CL_DATAFORMAT_5x12)) {
+    if (pco->transfer.DataFormat != (SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x12)) {
         pco->transfer.DataFormat = SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x12;
-
         if (pco_set_cl_config(pco) != PCO_NOERROR)
             PCO_ERROR_LOG("Setting CameraLink config failed");
     }
@@ -171,9 +218,11 @@ int main(int argc, char const* argv[])
     /* Start grabbing */
     printf("\n--- Grabbing one frame on Port A\n");
     int val = FG_CL_8BIT_FULL_10;
+    /*
     check_error_fg(fg, Fg_setParameter(fg, FG_CAMERA_LINK_CAMTYP, &val, PORT_A));
+    */
 
-    val = FG_GRAY;
+    val = FG_GRAY16;
     check_error_fg(fg, Fg_setParameter(fg, FG_FORMAT, &val, PORT_A));
 
     val = FREE_RUN;
@@ -200,9 +249,13 @@ int main(int argc, char const* argv[])
     }
     else {
         uint16_t *frame = (uint16_t *) Fg_getImagePtrEx(fg, 1, PORT_A, mem);
+        uint16_t *image = (uint16_t *) malloc(width*height*2);
+        decode(image, frame, width, height);
+
         FILE *fp = fopen("out.raw", "wb");
-        fwrite(frame, 2*width*height, 1, fp);
+        fwrite(image, 2*width*height, 1, fp);
         fclose(fp);
+        free(image);
     }
 
     /* Close CameraLink interfaces and frame grabber */
