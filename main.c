@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include "libpco.h"
+#include "reorder_func.h"
 #include "sc2_defs.h"
 
 #include "fgrab_struct.h"
@@ -44,71 +45,20 @@ void print_parameters(Fg_Struct *fg, unsigned int dma_index)
     }
 }
 
-void pcofg_set_size(struct pco_edge_t *pco, Fg_Struct *fg, int width, int height)
+void reorder_image_8bit(uint8_t *image, uint8_t *frame, int width, int height)
 {
-    int w = width;
-    uint32_t format = pco->transfer.DataFormat & PCO_CL_DATAFORMAT_MASK; 
-
-    /* FIXME: The following code is in the original code also. However, w is
-     * never used again after assignment.*/
-    switch (format) {
-        case PCO_CL_DATAFORMAT_4x16:
-        case PCO_CL_DATAFORMAT_5x16:
-            w *= 2;
-            break;
-        case PCO_CL_DATAFORMAT_5x12:
-            w *= 12;
-            w /= 16;
-            break;
-    }
-}
-
-void decode(uint16_t *bufout, uint16_t *bufin, int width, int height)
-{
-    uint16_t a, x, y, off;
-    uint16_t *lineadr_in;
-    uint16_t *lineadr_out;
-
-    off = (width*12)/32;
-    lineadr_in = (uint16_t*) bufin;
-    lineadr_out = (uint16_t*) bufout;
-
-    for (y = 0; y < height; y++) {
-        for (x = 0; x < off;) {
-            a = (*lineadr_in&0x0000FFF0)>>4;
-            a|= (*lineadr_in&0x0000000F)<<24;
-            a|= (*lineadr_in&0xFF000000)>>8;
-            *lineadr_out=a;
-            lineadr_out++;
-
-            a = (*lineadr_in&0x00FF0000)>>12;
-            lineadr_in++;
-            x++;
-            a|= (*lineadr_in&0x0000F000)>>12;
-            a|= (*lineadr_in&0x00000FFF)<<16;
-            *lineadr_out=a;
-            lineadr_out++;
-            a = (*lineadr_in&0xFFF00000)>>20;
-            a|= (*lineadr_in&0x000F0000)<<8;
-            lineadr_in++;
-            x++;
-            a|= (*lineadr_in&0x0000FF00)<<8;
-            *lineadr_out=a;
-            lineadr_out++;
-            a = (*lineadr_in&0x000000FF)<<4;
-            a|= (*lineadr_in&0xF0000000)>>28;
-            a|= (*lineadr_in&0x0FFF0000);
-            *lineadr_out=a;
-            lineadr_out++;
-            lineadr_in++;
-            x++;
+    const int pitch = 5;
+    for (int i = 0; i < width*height; i += pitch) {
+        for (int j = 0; j < pitch/2; j++) {
+            image[i+j] = frame[i+pitch-j-1];
+            image[i+pitch-j-1] = frame[i+j];
         }
     }
 }
 
 int main(int argc, char const* argv[])
 {
-    static const char *applet = "libDualAreaGray16.so";
+    static const char *applet = "libFullAreaGray8.so";
 
     /* CameraLink specific */
     printf("--- CameraLink ---------\n");
@@ -159,7 +109,7 @@ int main(int argc, char const* argv[])
 
     SC2_Temperature_Response temperature;
     if (pco_read_property(pco, GET_TEMPERATURE, &temperature, sizeof(temperature)) == PCO_NOERROR) {
-        printf(" CCD temperature: %i°C\n", temperature.sCCDtemp);
+        printf(" CCD temperature: %1.2f°C\n", temperature.sCCDtemp / 10.0f);
         printf(" Camera temperature: %i°C\n", temperature.sCamtemp);
         printf(" Power supply temperature: %i°C\n", temperature.sPStemp);
     }
@@ -185,8 +135,6 @@ int main(int argc, char const* argv[])
     if (pco_set_timebase(pco, 1, 1) != PCO_NOERROR)
         PCO_ERROR_LOG("SET TIMEBASE failed");
 
-    /* XXX: here followed pco_set_delay_exposure() with unknown values */
-
     if (pco->transfer.DataFormat != (SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x12)) {
         pco->transfer.DataFormat = SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x12;
         if (pco_set_cl_config(pco) != PCO_NOERROR)
@@ -205,6 +153,20 @@ int main(int argc, char const* argv[])
     Fg_Struct * fg;
 
     fg = Fg_Init(applet, 0);
+
+    int val = FG_CL_8BIT_FULL_10;
+    check_error_fg(fg, Fg_setParameter(fg, FG_CAMERA_LINK_CAMTYP, &val, PORT_A));
+
+    val = FG_GRAY;
+    check_error_fg(fg, Fg_setParameter(fg, FG_FORMAT, &val, PORT_A));
+
+    val = FREE_RUN;
+    check_error_fg(fg, Fg_setParameter(fg, FG_TRIGGERMODE, &val, PORT_A));
+
+    check_error_fg(fg, Fg_setParameter(fg, FG_WIDTH, &width, PORT_A));
+    check_error_fg(fg, Fg_setParameter(fg, FG_HEIGHT, &height, PORT_A));
+    printf(" Actual dimensions: %ix%i\n", width, height);
+
     if (fg != NULL) {
         printf("\n--- Port A -------------\n");
         print_parameters(fg, PORT_A);
@@ -217,22 +179,8 @@ int main(int argc, char const* argv[])
 
     /* Start grabbing */
     printf("\n--- Grabbing one frame on Port A\n");
-    int val = FG_CL_8BIT_FULL_10;
-    /*
-    check_error_fg(fg, Fg_setParameter(fg, FG_CAMERA_LINK_CAMTYP, &val, PORT_A));
-    */
 
-    val = FG_GRAY16;
-    check_error_fg(fg, Fg_setParameter(fg, FG_FORMAT, &val, PORT_A));
-
-    val = FREE_RUN;
-    check_error_fg(fg, Fg_setParameter(fg, FG_TRIGGERMODE, &val, PORT_A));
-
-    check_error_fg(fg, Fg_setParameter(fg, FG_WIDTH, &width, PORT_A));
-    check_error_fg(fg, Fg_setParameter(fg, FG_HEIGHT, &height, PORT_A));
-    printf(" Actual dimensions: %ix%i\n", width, height);
-
-    dma_mem *mem = Fg_AllocMemEx(fg, width*height*sizeof(uint16_t), 4);
+    dma_mem *mem = Fg_AllocMemEx(fg, width*height*sizeof(uint16_t), 1);
     if (mem == NULL) {
         printf(" Couldn't allocate buffer memory\n");
     }
@@ -241,19 +189,23 @@ int main(int argc, char const* argv[])
     sleep(1);
     printf(" Acquire image...");
     fflush(stdout);
-    check_error_fg(fg, Fg_AcquireEx(fg, 0, 4, ACQ_STANDARD, mem));
-    frameindex_t last_frame = Fg_getLastPicNumberBlockingEx(fg, 4, PORT_A, 5, mem);
+    check_error_fg(fg, Fg_AcquireEx(fg, 0, 1, ACQ_STANDARD, mem));
+    frameindex_t last_frame = Fg_getLastPicNumberBlockingEx(fg, 1, PORT_A, 5, mem);
+    check_error_fg(fg, Fg_stopAcquireEx(fg, 0, mem, STOP_ASYNC));
     printf(" done.\n");
+
     if (last_frame < 0) {
         printf(" Couldn't retrieve last frame\n");
     }
     else {
-        uint16_t *frame = (uint16_t *) Fg_getImagePtrEx(fg, 1, PORT_A, mem);
+        printf(" Image number: %u\n", (unsigned int) last_frame);
+        uint16_t *frame = (uint16_t *) Fg_getImagePtrEx(fg, last_frame, PORT_A, mem);
         uint16_t *image = (uint16_t *) malloc(width*height*2);
-        decode(image, frame, width, height);
+        reorder_image(image, frame, width, height, SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x12);
+        /*reorder_image_8bit(image, frame, width, height);*/
 
         FILE *fp = fopen("out.raw", "wb");
-        fwrite(image, 2*width*height, 1, fp);
+        fwrite(frame, width*height*2, 1, fp);
         fclose(fp);
         free(image);
     }

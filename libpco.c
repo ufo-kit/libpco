@@ -95,7 +95,8 @@ struct pco_edge_t *pco_init(void)
     for (int i = 0; i < 4; i++)
         pco->serial_refs[i] = NULL;
 
-    clGetNumSerialPorts(&pco->num_ports);
+    check_error_cl(clGetNumSerialPorts(&pco->num_ports));
+
     if (pco->num_ports > 4)
         pco->num_ports = 4;
 
