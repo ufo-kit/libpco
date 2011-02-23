@@ -384,7 +384,7 @@ unsigned int pco_set_timebase(struct pco_edge_t *pco, uint16_t delay,uint16_t ex
    return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
 }
 
-unsigned int pco_set_delay_exposure(struct pco_edge_t *pco, uint32_t delay,uint32_t expos)
+unsigned int pco_set_delay_exposure(struct pco_edge_t *pco, uint32_t delay, uint32_t exposure)
 {
    SC2_Set_Delay_Exposure com;
    SC2_Delay_Exposure_Response resp;
@@ -392,8 +392,20 @@ unsigned int pco_set_delay_exposure(struct pco_edge_t *pco, uint32_t delay,uint3
    com.wCode = SET_DELAY_EXPOSURE_TIME;
    com.wSize = sizeof(SC2_Set_Delay_Exposure);
    com.dwDelay = delay;
-   com.dwExposure = expos;
+   com.dwExposure = exposure;
    return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
+}
+
+unsigned int pco_get_delay_exposure(struct pco_edge_t *pco, uint32_t *delay, uint32_t *exposure)
+{
+   uint32_t err = PCO_NOERROR;
+
+   SC2_Delay_Exposure_Response resp;
+   if (pco_read_property(pco, GET_DELAY_EXPOSURE_TIME, &resp, sizeof(resp)) == PCO_NOERROR) {
+       *delay = resp.dwDelay;
+       *exposure = resp.dwExposure;
+   }
+   return err;
 }
 
 unsigned int pco_arm_camera(struct pco_edge_t *pco)

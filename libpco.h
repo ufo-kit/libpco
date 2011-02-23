@@ -40,6 +40,7 @@ unsigned int pco_set_rec_state(struct pco_edge_t *pco, uint16_t state);
 unsigned int pco_set_timestamp_mode(struct pco_edge_t *pco, uint16_t mode);
 unsigned int pco_set_timebase(struct pco_edge_t *pco, uint16_t delay,uint16_t expos);
 unsigned int pco_set_delay_exposure(struct pco_edge_t *pco, uint32_t delay, uint32_t expos);
+unsigned int pco_get_delay_exposure(struct pco_edge_t *pco, uint32_t *delay, uint32_t *expos);
 unsigned int pco_arm_camera(struct pco_edge_t *pco);
 unsigned int pco_get_actual_size(struct pco_edge_t *pco, uint32_t *width, uint32_t *height);
 
