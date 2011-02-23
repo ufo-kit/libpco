@@ -45,13 +45,13 @@ void print_parameters(Fg_Struct *fg, unsigned int dma_index)
     }
 }
 
-void reorder_image_8bit(uint8_t *image, uint8_t *frame, int width, int height)
+void reorder_image_f(uint16_t *image, uint16_t *frame, int width, int height)
 {
-    const int pitch = 5;
-    for (int i = 0; i < width*height; i += pitch) {
-        for (int j = 0; j < pitch/2; j++) {
-            image[i+j] = frame[i+pitch-j-1];
-            image[i+pitch-j-1] = frame[i+j];
+    for (int y = 0; y < height/2; y++) {
+        size_t off = y*width;
+        for (int x = 0; x < width; x++) {
+            image[off + x] = frame[off*2 + x];
+            image[(height-1)*width - off + x] = frame[off*2 + width + x];
         }
     }
 }
@@ -114,7 +114,7 @@ int main(int argc, char const* argv[])
         printf(" Power supply temperature: %i°C\n", temperature.sPStemp);
     }
 
-    pco_set_delay_exposure(pco, 1000, 5000);
+    pco_set_delay_exposure(pco, 1000, 280000);
     SC2_Delay_Exposure_Response de;
     if (pco_read_property(pco, GET_DELAY_EXPOSURE_TIME, &de, sizeof(de)) == PCO_NOERROR) {
         printf(" Delay: %u µs\n", (uint32_t) de.dwDelay);
@@ -129,14 +129,14 @@ int main(int argc, char const* argv[])
     if (pco_set_rec_state(pco, 0) != PCO_NOERROR)
         PCO_ERROR_LOG("SET RECORDING STATE failed");
 
-    if (pco_set_timestamp_mode(pco, TIMESTAMP_MODE_BINARYANDASCII) != PCO_NOERROR)
+    if (pco_set_timestamp_mode(pco, 0) != PCO_NOERROR)
         PCO_ERROR_LOG("SET TIMESTAMP failed");
 
     if (pco_set_timebase(pco, 1, 1) != PCO_NOERROR)
         PCO_ERROR_LOG("SET TIMEBASE failed");
 
-    if (pco->transfer.DataFormat != (SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x12)) {
-        pco->transfer.DataFormat = SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x12;
+    if (pco->transfer.DataFormat != (SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x16)) {
+        pco->transfer.DataFormat = SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x16;
         if (pco_set_cl_config(pco) != PCO_NOERROR)
             PCO_ERROR_LOG("Setting CameraLink config failed");
     }
@@ -163,9 +163,14 @@ int main(int argc, char const* argv[])
     val = FREE_RUN;
     check_error_fg(fg, Fg_setParameter(fg, FG_TRIGGERMODE, &val, PORT_A));
 
+    width *= 2;
+    height *= 2;
+
     check_error_fg(fg, Fg_setParameter(fg, FG_WIDTH, &width, PORT_A));
     check_error_fg(fg, Fg_setParameter(fg, FG_HEIGHT, &height, PORT_A));
     printf(" Actual dimensions: %ix%i\n", width, height);
+    width /= 2;
+    height /= 2;
 
     if (fg != NULL) {
         printf("\n--- Port A -------------\n");
@@ -201,11 +206,10 @@ int main(int argc, char const* argv[])
         printf(" Image number: %u\n", (unsigned int) last_frame);
         uint16_t *frame = (uint16_t *) Fg_getImagePtrEx(fg, last_frame, PORT_A, mem);
         uint16_t *image = (uint16_t *) malloc(width*height*2);
-        reorder_image(image, frame, width, height, SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x12);
-        /*reorder_image_8bit(image, frame, width, height);*/
+        reorder_image_f(image, frame, width, height);
 
         FILE *fp = fopen("out.raw", "wb");
-        fwrite(frame, width*height*2, 1, fp);
+        fwrite(image, width*height*2, 1, fp);
         fclose(fp);
         free(image);
     }
