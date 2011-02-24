@@ -5,7 +5,6 @@
 #include <sys/time.h>
 
 #include "libpco.h"
-#include "reorder_func.h"
 #include "sc2_defs.h"
 
 #include "fgrab_struct.h"
@@ -46,14 +45,76 @@ void print_parameters(Fg_Struct *fg, unsigned int dma_index)
     }
 }
 
-void reorder_image_f(uint16_t *image, uint16_t *frame, int width, int height)
+/* Courtesy of PCO AG */
+void decode_line(int width, void *bufout, void* bufin)
 {
+    uint32_t *lineadr_in = (uint32_t *) bufin;
+    uint32_t *lineadr_out = (uint32_t *) bufout;
+    uint32_t a;
+
+    for (int x = 0; x < (width*12)/32;) {
+        a = (*lineadr_in&0x0000FFF0)>>4;
+        a|= (*lineadr_in&0x0000000F)<<24;
+        a|= (*lineadr_in&0xFF000000)>>8;
+        *lineadr_out = a;
+        lineadr_out++;
+
+        a = (*lineadr_in&0x00FF0000)>>12;
+        lineadr_in++;
+        x++;
+        a|= (*lineadr_in&0x0000F000)>>12;
+        a|= (*lineadr_in&0x00000FFF)<<16;
+        *lineadr_out = a;
+        lineadr_out++;
+
+        a = (*lineadr_in&0xFFF00000)>>20;
+        a|= (*lineadr_in&0x000F0000)<<8;
+        lineadr_in++;
+        x++;
+        a|= (*lineadr_in&0x0000FF00)<<8;
+        *lineadr_out = a;
+        lineadr_out++;
+
+        a = (*lineadr_in&0x000000FF)<<4;
+        a|= (*lineadr_in&0xF0000000)>>28;
+        a|= (*lineadr_in&0x0FFF0000);
+        *lineadr_out = a;
+        lineadr_out++;
+        lineadr_in++;
+        x++;
+    }
+}
+
+void reorder_image_5x12(uint16_t *bufout, uint16_t *bufin, int width, int height)
+{
+    uint16_t *line_top = bufout;
+    uint16_t *line_bottom = bufout + (height-1)*width;
+    uint16_t *line_in = bufin;
+    int off = (width*12)/16;
+
     for (int y = 0; y < height/2; y++) {
-        size_t off = y*width;
-        for (int x = 0; x < width; x++) {
-            image[off + x] = frame[off*2 + x];
-            image[(height-1)*width - off + x] = frame[off*2 + width + x];
-        }
+        decode_line(width, line_top, line_in);
+        line_in += off;
+        decode_line(width, line_bottom, line_in);
+        line_in += off;
+        line_top += width;
+        line_bottom -= width;
+    }
+}
+
+void reorder_image_5x16(uint16_t *bufout, uint16_t *bufin, int width, int height)
+{
+    uint16_t *line_top = bufout;
+    uint16_t *line_bottom = bufout + (height-1)*width;
+    uint16_t *line_in = bufin;
+
+    for (int y = 0; y < height/2; y++) {
+        memcpy(line_top, line_in, width*sizeof(uint16_t));
+        line_in += width;
+        memcpy(line_bottom, line_in, width*sizeof(uint16_t));
+        line_in += width;
+        line_top += width;
+        line_bottom -= width;
     }
 }
 
@@ -121,7 +182,7 @@ int main(int argc, char const* argv[])
         printf(" Power supply temperature: %i°C\n", temperature.sPStemp);
     }
 
-    pco_set_delay_exposure(pco, 0, 30000);
+    pco_set_delay_exposure(pco, 0, 20000);
     SC2_Delay_Exposure_Response de;
     if (pco_read_property(pco, GET_DELAY_EXPOSURE_TIME, &de, sizeof(de)) == PCO_NOERROR) {
         printf(" Delay: %u µs\n", (uint32_t) de.dwDelay);
@@ -142,11 +203,9 @@ int main(int argc, char const* argv[])
     if (pco_set_timebase(pco, 1, 1) != PCO_NOERROR)
         PCO_ERROR_LOG("SET TIMEBASE failed");
 
-    if (pco->transfer.DataFormat != (SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x16)) {
-        pco->transfer.DataFormat = SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x16;
-        if (pco_set_cl_config(pco) != PCO_NOERROR)
-            PCO_ERROR_LOG("Setting CameraLink config failed");
-    }
+    pco->transfer.DataFormat = SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x12;
+    if (pco_set_cl_config(pco) != PCO_NOERROR)
+        PCO_ERROR_LOG("Setting CameraLink config failed");
 
     if (pco_arm_camera(pco) != PCO_NOERROR)
         PCO_ERROR_LOG("Couldn't ARM camera\n");
@@ -175,6 +234,7 @@ int main(int argc, char const* argv[])
     check_error_fg(fg, Fg_setParameter(fg, FG_WIDTH, &width, PORT_A));
     check_error_fg(fg, Fg_setParameter(fg, FG_HEIGHT, &height, PORT_A));
     printf(" Actual dimensions: %ix%i\n", width, height);
+
     width /= 2;
 
     if (fg != NULL) {
@@ -224,7 +284,10 @@ int main(int argc, char const* argv[])
 
         uint16_t *frame = (uint16_t *) Fg_getImagePtrEx(fg, last_frame, PORT_A, mem);
         uint16_t *image = (uint16_t *) malloc(width*height*2);
-        reorder_image_f(image, frame, width, height);
+        if ((pco->transfer.DataFormat & PCO_CL_DATAFORMAT_MASK) == PCO_CL_DATAFORMAT_5x12)
+            reorder_image_5x12(image, frame, width, height);
+        else
+            reorder_image_5x16(image, frame, width, height);
 
         FILE *fp = fopen("out.raw", "wb");
         fwrite(image, width*height*2, 1, fp);
