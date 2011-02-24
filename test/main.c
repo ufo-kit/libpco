@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #include "libpco.h"
 #include "reorder_func.h"
@@ -54,6 +55,11 @@ void reorder_image_f(uint16_t *image, uint16_t *frame, int width, int height)
             image[(height-1)*width - off + x] = frame[off*2 + width + x];
         }
     }
+}
+
+int64_t time_diff(struct timeval *end, struct timeval *start)
+{
+    return ((end->tv_sec * 1000000) + end->tv_usec) - ((start->tv_sec * 1000000) + start->tv_usec);
 }
 
 int main(int argc, char const* argv[])
@@ -183,27 +189,41 @@ int main(int argc, char const* argv[])
     }
 
     /* Start grabbing */
-    printf("\n--- Grabbing one frame on Port A\n");
+    printf("\n--- Grabbing on Port A\n");
+    const int n_buffers = 20;
 
-    dma_mem *mem = Fg_AllocMemEx(fg, width*height*sizeof(uint16_t), 1);
+    dma_mem *mem = Fg_AllocMemEx(fg, n_buffers*width*height*sizeof(uint16_t), n_buffers);
     if (mem == NULL) {
         printf(" Couldn't allocate buffer memory\n");
     }
 
+    const int n_images = 50;
+
     pco_set_rec_state(pco, 1);
     sleep(1);
-    printf(" Acquire image...");
+    printf(" Acquire %d image(s)...", n_images);
     fflush(stdout);
-    check_error_fg(fg, Fg_AcquireEx(fg, 0, 1, ACQ_STANDARD, mem));
-    frameindex_t last_frame = Fg_getLastPicNumberBlockingEx(fg, 1, PORT_A, 5, mem);
+    check_error_fg(fg, Fg_AcquireEx(fg, 0, GRAB_INFINITE, ACQ_STANDARD, mem));
+
+    frameindex_t last_frame = 1;
+    struct timeval start, end;
+
+    gettimeofday(&start, NULL);
+    last_frame = Fg_getLastPicNumberBlockingEx(fg, n_images, PORT_A, n_images, mem);
+    gettimeofday(&end, NULL);
     check_error_fg(fg, Fg_stopAcquireEx(fg, 0, mem, STOP_ASYNC));
     printf(" done.\n");
 
     if (last_frame < 0) {
-        printf(" Couldn't retrieve last frame\n");
+        printf(" Timed out\n");
     }
     else {
-        printf(" Image number: %u\n", (unsigned int) last_frame);
+        long transfered_bytes = n_images * width * height * 2;
+        uint64_t elapsed = time_diff(&end, &start);
+        printf(" Time: %.2f s\n", (float)(elapsed / 1000000.0f));
+        printf(" Bandwidth: %.3f MB/s\n", (transfered_bytes / (1024*1024)) / (elapsed / 1000000.0f));
+        printf(" Frame rate: %.2f Frames/s\n", n_images / (elapsed / 1000000.0f));
+
         uint16_t *frame = (uint16_t *) Fg_getImagePtrEx(fg, last_frame, PORT_A, mem);
         uint16_t *image = (uint16_t *) malloc(width*height*2);
         reorder_image_f(image, frame, width, height);
