@@ -70,16 +70,17 @@ int main(int argc, char const* argv[])
     printf("--- CameraLink ---------\n");
     struct pco_edge_t *pco = pco_init();
 
-    unsigned int buffer_size, version, err;
-    char str[256];
+    unsigned int buffer_size = 256, version, err;
+    char str[buffer_size];
 
     printf(" Ports: %i\n", pco->num_ports);
     for (int i = 0; i < pco->num_ports; i++) {
         check_error_cl(clGetSerialPortIdentifier(i, str, &buffer_size));
         printf("  Port Identifier (Port %i): %s\n", i, str);
+        buffer_size = 256;
     }
 
-    clGetManufacturerInfo(str, &buffer_size, &version);
+    check_error_cl(clGetManufacturerInfo(str, &buffer_size, &version));
     printf(" Manufacturer: %s\n", str);
     printf(" Version: %x\n", version);
     
@@ -120,7 +121,7 @@ int main(int argc, char const* argv[])
         printf(" Power supply temperature: %i°C\n", temperature.sPStemp);
     }
 
-    pco_set_delay_exposure(pco, 1000, 280000);
+    pco_set_delay_exposure(pco, 0, 30000);
     SC2_Delay_Exposure_Response de;
     if (pco_read_property(pco, GET_DELAY_EXPOSURE_TIME, &de, sizeof(de)) == PCO_NOERROR) {
         printf(" Delay: %u µs\n", (uint32_t) de.dwDelay);
@@ -170,13 +171,11 @@ int main(int argc, char const* argv[])
     check_error_fg(fg, Fg_setParameter(fg, FG_TRIGGERMODE, &val, PORT_A));
 
     width *= 2;
-    height *= 2;
 
     check_error_fg(fg, Fg_setParameter(fg, FG_WIDTH, &width, PORT_A));
     check_error_fg(fg, Fg_setParameter(fg, FG_HEIGHT, &height, PORT_A));
     printf(" Actual dimensions: %ix%i\n", width, height);
     width /= 2;
-    height /= 2;
 
     if (fg != NULL) {
         printf("\n--- Port A -------------\n");
@@ -197,13 +196,12 @@ int main(int argc, char const* argv[])
         printf(" Couldn't allocate buffer memory\n");
     }
 
-    const int n_images = 50;
+    const int n_images = 20;
 
     pco_set_rec_state(pco, 1);
-    sleep(1);
     printf(" Acquire %d image(s)...", n_images);
     fflush(stdout);
-    check_error_fg(fg, Fg_AcquireEx(fg, 0, GRAB_INFINITE, ACQ_STANDARD, mem));
+    check_error_fg(fg, Fg_AcquireEx(fg, 0, n_images, ACQ_STANDARD, mem));
 
     frameindex_t last_frame = 1;
     struct timeval start, end;

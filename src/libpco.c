@@ -316,7 +316,7 @@ unsigned int pco_get_rec_state(struct pco_edge_t *pco, uint16_t *state)
 
 unsigned int pco_set_rec_state(struct pco_edge_t *pco, uint16_t state)
 {
-#define REC_WAIT_TIME 50
+#define REC_WAIT_TIME 500
 
     uint16_t g_state, x = 0;
     unsigned int err = PCO_NOERROR;
