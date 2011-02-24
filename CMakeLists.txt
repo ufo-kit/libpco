@@ -30,6 +30,6 @@ install(FILES
     DESTINATION include/libpco)
 
 # --- Build test executable -------------------------------------------------
-add_executable(diagnose test/main.c test/reorder_func.c)
+add_executable(diagnose test/main.c)
 target_link_libraries(diagnose pco ${FGLIB5_LIBRARY} ${CLSERME4_LIBRARY})
 

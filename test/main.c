@@ -203,7 +203,7 @@ int main(int argc, char const* argv[])
     if (pco_set_timebase(pco, 1, 1) != PCO_NOERROR)
         PCO_ERROR_LOG("SET TIMEBASE failed");
 
-    pco->transfer.DataFormat = SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x12;
+    pco->transfer.DataFormat = SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x16;
     if (pco_set_cl_config(pco) != PCO_NOERROR)
         PCO_ERROR_LOG("Setting CameraLink config failed");
 
