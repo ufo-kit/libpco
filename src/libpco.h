@@ -18,7 +18,6 @@ typedef struct pco_edge_t {
     PCO_SC2_TIMEOUTS timeouts;
     PCO_SC2_CL_TRANSFER_PARAM transfer;
     SC2_Camera_Description_Response description;
-    SC2_Firmware_Versions_Response firmware_version;
 } pco_edge;
 
 #define PCO_ERROR_LOG(s) { fprintf(stderr, "pco: %s <%s:%i>\n", s, __FILE__, __LINE__); }
@@ -31,8 +30,8 @@ void pco_destroy(struct pco_edge_t *pco);
 unsigned int pco_control_command(struct pco_edge_t *pco, void *buffer_in, uint32_t size_in, void *buffer_out, uint32_t size_out);
 
 unsigned int pco_active(struct pco_edge_t *pco);
-unsigned int pco_scan_and_set_baud_rate(struct pco_edge_t *pco);
-unsigned int pco_retrieve_cl_config(struct pco_edge_t *pco);
+unsigned int pco_set_scan_mode(struct pco_edge_t *pco, uint32_t mode);
+
 unsigned int pco_set_cl_config(struct pco_edge_t *pco);
 unsigned int pco_read_property(struct pco_edge_t *pco, uint16_t code, void *dst, uint32_t size);
 unsigned int pco_get_rec_state(struct pco_edge_t *pco, uint16_t *state);

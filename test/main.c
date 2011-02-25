@@ -131,7 +131,7 @@ int main(int argc, char const* argv[])
     printf("--- CameraLink ---------\n");
     struct pco_edge_t *pco = pco_init();
 
-    unsigned int buffer_size = 256, version, err;
+    unsigned int buffer_size = 256, version;
     char str[buffer_size];
 
     printf(" Ports: %i\n", pco->num_ports);
@@ -156,24 +156,19 @@ int main(int argc, char const* argv[])
     else
         printf("yes\n");
 
-    printf(" Scanning for baud rate... ");
-    fflush(stdout);
-    pco_scan_and_set_baud_rate(pco);
-    printf("using %i Bd/s\n", pco->baud_rate);
-
     SC2_Camera_Name_Response name;
     if (pco_read_property(pco, GET_CAMERA_NAME, &name, sizeof(name)) == PCO_NOERROR)
         printf("\n Camera name: %s\n", name.szName);
 
-    err = pco_read_property(pco, GET_CAMERA_DESCRIPTION, &pco->description, sizeof(pco->description));
-    if (err != PCO_NOERROR)
-        PCO_ERROR_LOG("GET_CAMERA_DESCRIPTION failed");
-
-    if (pco_retrieve_cl_config(pco) == PCO_NOERROR) {
-        printf(" Clock frequency: %i MHz\n", pco->transfer.ClockFrequency/1000000);
-        printf(" Data format: 0x0%x\n", (pco->transfer.DataFormat & PCO_CL_DATAFORMAT_MASK));
-        printf(" Transmit continuously: %s\n", (pco->transfer.Transmit ? "yes" : "no"));
+    printf(" Available pixel clocks\n");
+    for (int i = 0; i < 4; i++) {
+        if (pco->description.dwPixelRateDESC[i] > 0)
+            printf("  Pixelclock %i: %.2f MHz\n", i+1, pco->description.dwPixelRateDESC[i] / 1000000.0f);
     }
+
+    printf(" Clock frequency: %i MHz\n", pco->transfer.ClockFrequency/1000000);
+    printf(" Data format: 0x0%x\n", (pco->transfer.DataFormat & PCO_CL_DATAFORMAT_MASK));
+    printf(" Transmit continuously: %s\n", (pco->transfer.Transmit ? "yes" : "no"));
 
     SC2_Temperature_Response temperature;
     if (pco_read_property(pco, GET_TEMPERATURE, &temperature, sizeof(temperature)) == PCO_NOERROR) {
@@ -182,7 +177,7 @@ int main(int argc, char const* argv[])
         printf(" Power supply temperature: %i°C\n", temperature.sPStemp);
     }
 
-    pco_set_delay_exposure(pco, 0, 20000);
+    pco_set_delay_exposure(pco, 0, 5);
     SC2_Delay_Exposure_Response de;
     if (pco_read_property(pco, GET_DELAY_EXPOSURE_TIME, &de, sizeof(de)) == PCO_NOERROR) {
         printf(" Delay: %u µs\n", (uint32_t) de.dwDelay);
@@ -194,9 +189,6 @@ int main(int argc, char const* argv[])
         printf(" Pixel rate: %i\n", pixelrate.dwPixelrate);
 
     /* Setup for recording */
-    if (pco_set_rec_state(pco, 0) != PCO_NOERROR)
-        PCO_ERROR_LOG("SET RECORDING STATE failed");
-
     if (pco_set_timestamp_mode(pco, 0) != PCO_NOERROR)
         PCO_ERROR_LOG("SET TIMESTAMP failed");
 
