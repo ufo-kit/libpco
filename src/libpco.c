@@ -203,7 +203,7 @@ static unsigned int pco_scan_and_set_baud_rate(struct pco_edge_t *pco)
     int idx = 0;
 
     while ((err != PCO_NOERROR) && (baudrates[idx][0] != 0)) {
-        check_error_cl(clSetBaudRate(pco->serial_ref, baudrates[idx][0]));
+        clSetBaudRate(pco->serial_ref, baudrates[idx][0]);
         pco_msleep(150);
         err = pco_control_command(pco, &com, sizeof(com), &resp, sizeof(SC2_Camera_Type_Response));
         if (err != PCO_NOERROR)
@@ -469,18 +469,22 @@ struct pco_edge_t *pco_init(void)
     for (int i = 0; i < 4; i++)
         pco->serial_refs[i] = NULL;
 
-    check_error_cl(clGetNumSerialPorts(&pco->num_ports));
+    if (clGetNumSerialPorts(&pco->num_ports) != CL_OK)
+        goto no_pco;
 
     if (pco->num_ports > 4)
         pco->num_ports = 4;
 
     for (int i = 0; i < pco->num_ports; i++)
-        check_error_cl(clSerialInit(i, &pco->serial_refs[i]));
+        if (clSerialInit(i, &pco->serial_refs[i]) != CL_OK)
+            goto no_pco;
     
     /* Reference the first port for easier access */
     pco->serial_ref = pco->serial_refs[0];
 
-    pco_scan_and_set_baud_rate(pco);
+    if (pco_scan_and_set_baud_rate(pco) != PCO_NOERROR)
+        goto no_pco;
+
     pco_set_rec_state(pco, 0);
     pco_retrieve_cl_config(pco);
 
@@ -490,6 +494,10 @@ struct pco_edge_t *pco_init(void)
     }
 
     return pco;
+
+no_pco:
+    free(pco);
+    return NULL;
 }
 
 void pco_destroy(struct pco_edge_t *pco)

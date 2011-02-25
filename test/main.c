@@ -274,7 +274,7 @@ int main(int argc, char const* argv[])
         printf(" Timed out\n");
     }
     else {
-        float factor = pco->transfer.DataFormat & PCO_CL_DATAFORMAT_MASK == PCO_CL_DATAFORMAT_5x12 ? 16./12 : 2.f;
+        float factor = (pco->transfer.DataFormat & PCO_CL_DATAFORMAT_MASK) == PCO_CL_DATAFORMAT_5x12 ? 16./12 : 2.f;
         float transfered_bytes = n_images * width * height * factor;
         uint64_t elapsed = time_diff(&end, &start);
         printf(" Time: %.2f s\n", (float)(elapsed / 1000000.0f));
