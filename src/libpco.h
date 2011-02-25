@@ -30,6 +30,9 @@ void check_error_cl(int code);
 struct pco_edge_t *pco_init(void);
 void pco_destroy(struct pco_edge_t *pco);
 
+void pco_reorder_image_5x12(uint16_t *bufout, uint16_t *bufin, int width, int height);
+void pco_reorder_image_5x16(uint16_t *bufout, uint16_t *bufin, int width, int height);
+
 unsigned int pco_control_command(struct pco_edge_t *pco, void *buffer_in, uint32_t size_in, void *buffer_out, uint32_t size_out);
 
 unsigned int pco_active(struct pco_edge_t *pco);

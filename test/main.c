@@ -45,78 +45,6 @@ void print_parameters(Fg_Struct *fg, unsigned int dma_index)
     }
 }
 
-/* Courtesy of PCO AG */
-void decode_line(int width, void *bufout, void* bufin)
-{
-    uint32_t *lineadr_in = (uint32_t *) bufin;
-    uint32_t *lineadr_out = (uint32_t *) bufout;
-    uint32_t a;
-
-    for (int x = 0; x < (width*12)/32;) {
-        a = (*lineadr_in&0x0000FFF0)>>4;
-        a|= (*lineadr_in&0x0000000F)<<24;
-        a|= (*lineadr_in&0xFF000000)>>8;
-        *lineadr_out = a;
-        lineadr_out++;
-
-        a = (*lineadr_in&0x00FF0000)>>12;
-        lineadr_in++;
-        x++;
-        a|= (*lineadr_in&0x0000F000)>>12;
-        a|= (*lineadr_in&0x00000FFF)<<16;
-        *lineadr_out = a;
-        lineadr_out++;
-
-        a = (*lineadr_in&0xFFF00000)>>20;
-        a|= (*lineadr_in&0x000F0000)<<8;
-        lineadr_in++;
-        x++;
-        a|= (*lineadr_in&0x0000FF00)<<8;
-        *lineadr_out = a;
-        lineadr_out++;
-
-        a = (*lineadr_in&0x000000FF)<<4;
-        a|= (*lineadr_in&0xF0000000)>>28;
-        a|= (*lineadr_in&0x0FFF0000);
-        *lineadr_out = a;
-        lineadr_out++;
-        lineadr_in++;
-        x++;
-    }
-}
-
-void reorder_image_5x12(uint16_t *bufout, uint16_t *bufin, int width, int height)
-{
-    uint16_t *line_top = bufout;
-    uint16_t *line_bottom = bufout + (height-1)*width;
-    uint16_t *line_in = bufin;
-    int off = (width*12)/16;
-
-    for (int y = 0; y < height/2; y++) {
-        decode_line(width, line_top, line_in);
-        line_in += off;
-        decode_line(width, line_bottom, line_in);
-        line_in += off;
-        line_top += width;
-        line_bottom -= width;
-    }
-}
-
-void reorder_image_5x16(uint16_t *bufout, uint16_t *bufin, int width, int height)
-{
-    uint16_t *line_top = bufout;
-    uint16_t *line_bottom = bufout + (height-1)*width;
-    uint16_t *line_in = bufin;
-
-    for (int y = 0; y < height/2; y++) {
-        memcpy(line_top, line_in, width*sizeof(uint16_t));
-        line_in += width;
-        memcpy(line_bottom, line_in, width*sizeof(uint16_t));
-        line_in += width;
-        line_top += width;
-        line_bottom -= width;
-    }
-}
 
 int64_t time_diff(struct timeval *end, struct timeval *start)
 {
@@ -200,7 +128,7 @@ int main(int argc, char const* argv[])
 
     pco_set_scan_mode(pco, PCO_SCANMODE_SLOW);
 
-    uint16_t roi_window[4] = {1, 1, 320, 240};
+    uint16_t roi_window[4] = {1, 1, 640, 480};
     if (pco_set_roi(pco, roi_window) != PCO_NOERROR)
         printf(" Couldn't set ROI\n");
     pco_get_roi(pco, roi_window);
@@ -284,9 +212,9 @@ int main(int argc, char const* argv[])
         uint16_t *frame = (uint16_t *) Fg_getImagePtrEx(fg, last_frame, PORT_A, mem);
         uint16_t *image = (uint16_t *) malloc(width*height*2);
         if ((pco->transfer.DataFormat & PCO_CL_DATAFORMAT_MASK) == PCO_CL_DATAFORMAT_5x12)
-            reorder_image_5x12(image, frame, width, height);
+            pco_reorder_image_5x12(image, frame, width, height);
         else
-            reorder_image_5x16(image, frame, width, height);
+            pco_reorder_image_5x16(image, frame, width, height);
 
         FILE *fp = fopen("out.raw", "wb");
         fwrite(image, width*height*2, 1, fp);
