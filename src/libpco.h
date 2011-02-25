@@ -34,9 +34,10 @@ void pco_reorder_image_5x12(uint16_t *bufout, uint16_t *bufin, int width, int he
 void pco_reorder_image_5x16(uint16_t *bufout, uint16_t *bufin, int width, int height);
 
 unsigned int pco_control_command(struct pco_edge_t *pco, void *buffer_in, uint32_t size_in, void *buffer_out, uint32_t size_out);
+unsigned int pco_is_active(struct pco_edge_t *pco);
 
-unsigned int pco_active(struct pco_edge_t *pco);
 unsigned int pco_set_scan_mode(struct pco_edge_t *pco, uint32_t mode);
+unsigned int pco_get_scan_mode(struct pco_edge_t *pco, uint32_t *mode);
 
 unsigned int pco_set_roi(struct pco_edge_t *pco, uint16_t *window);
 unsigned int pco_get_roi(struct pco_edge_t *pco, uint16_t *window);

@@ -76,7 +76,7 @@ int main(int argc, char const* argv[])
     /* Query properties and output them */
     printf("\n--- Camera ----------\n");
     printf(" Active: ");
-    if (!pco_active(pco)) {
+    if (!pco_is_active(pco)) {
         printf("no\n");
         pco_destroy(pco);
         return 1;
@@ -93,6 +93,11 @@ int main(int argc, char const* argv[])
         if (pco->description.dwPixelRateDESC[i] > 0)
             printf("  Pixelclock %i: %.2f MHz\n", i+1, pco->description.dwPixelRateDESC[i] / 1000000.0f);
     }
+
+    uint32_t scan_mode = 0xFFFF;
+    if (pco_get_scan_mode(pco, &scan_mode) == PCO_NOERROR)
+        printf(" Current scan mode: %i\n", scan_mode);
+
     printf(" ROI steps: <%i,%i>\n", pco->description.wRoiHorStepsDESC, pco->description.wRoiVertStepsDESC);
 
     pco_set_scan_mode(pco, PCO_SCANMODE_FAST);
@@ -114,10 +119,6 @@ int main(int argc, char const* argv[])
         printf(" Delay: %u µs\n", (uint32_t) de.dwDelay);
         printf(" Exposure: %u µs\n", (uint32_t) de.dwExposure);
     }
-   
-    SC2_Pixelrate_Response pixelrate;
-    if (pco_read_property(pco, GET_PIXELRATE, &pixelrate, sizeof(pixelrate)) == PCO_NOERROR)
-        printf(" Pixel rate: %i\n", pixelrate.dwPixelrate);
 
     /* Setup for recording */
     if (pco_set_timestamp_mode(pco, 0) != PCO_NOERROR)

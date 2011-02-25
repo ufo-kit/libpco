@@ -226,7 +226,7 @@ unsigned int pco_control_command(struct pco_edge_t *pco,
     return err;
 }
 
-unsigned int pco_active(struct pco_edge_t *pco)
+unsigned int pco_is_active(struct pco_edge_t *pco)
 {
     SC2_Camera_Type_Response resp;
     return pco_read_property(pco, GET_CAMERA_TYPE, &resp, sizeof(resp)) == PCO_NOERROR;
@@ -244,7 +244,7 @@ unsigned int pco_set_scan_mode(struct pco_edge_t *pco, uint32_t mode)
     else if (mode == PCO_SCANMODE_FAST)
         pco->transfer.DataFormat = SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x12;
 
-    if ((err = pco_set_cl_config(pco) != PCO_NOERROR) != PCO_NOERROR)
+    if ((err = pco_set_cl_config(pco)) != PCO_NOERROR) 
         return err;
 
     SC2_Set_Pixelrate com;
@@ -254,6 +254,24 @@ unsigned int pco_set_scan_mode(struct pco_edge_t *pco, uint32_t mode)
     SC2_Pixelrate_Response resp;
 
     return pco_control_command(pco, &com, sizeof(SC2_Set_Pixelrate), &resp, sizeof(SC2_Pixelrate_Response));
+}
+
+unsigned int pco_get_scan_mode(struct pco_edge_t *pco, uint32_t *mode)
+{
+    unsigned int err = PCO_NOERROR;
+    SC2_Pixelrate_Response pixelrate;
+
+    if ((err = pco_read_property(pco, GET_PIXELRATE, &pixelrate, sizeof(pixelrate))) == PCO_NOERROR) {
+        for (int i = 0; i < 4; i++) {
+            if (pixelrate.dwPixelrate == pco->description.dwPixelRateDESC[i]) {
+                *mode = i;
+                return PCO_NOERROR;
+            }
+        }
+        *mode = 0xFFFF;
+        return PCO_ERROR_IS_ERROR;
+    }
+    return err;
 }
 
 static unsigned int pco_scan_and_set_baud_rate(struct pco_edge_t *pco)
