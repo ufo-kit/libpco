@@ -22,6 +22,9 @@ typedef struct pco_edge_t {
 
 #define PCO_ERROR_LOG(s) { fprintf(stderr, "pco: %s <%s:%i>\n", s, __FILE__, __LINE__); }
 
+#define PCO_SCANMODE_SLOW   0
+#define PCO_SCANMODE_FAST   1
+
 void check_error_cl(int code);
 
 struct pco_edge_t *pco_init(void);
@@ -31,6 +34,9 @@ unsigned int pco_control_command(struct pco_edge_t *pco, void *buffer_in, uint32
 
 unsigned int pco_active(struct pco_edge_t *pco);
 unsigned int pco_set_scan_mode(struct pco_edge_t *pco, uint32_t mode);
+
+unsigned int pco_set_roi(struct pco_edge_t *pco, uint16_t *window);
+unsigned int pco_get_roi(struct pco_edge_t *pco, uint16_t *window);
 
 unsigned int pco_set_cl_config(struct pco_edge_t *pco);
 unsigned int pco_read_property(struct pco_edge_t *pco, uint16_t code, void *dst, uint32_t size);

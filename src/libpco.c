@@ -161,9 +161,18 @@ unsigned int pco_active(struct pco_edge_t *pco)
 
 unsigned int pco_set_scan_mode(struct pco_edge_t *pco, uint32_t mode)
 {
+    unsigned int err = PCO_NOERROR;
     const uint32_t pixel_clock = pco->description.dwPixelRateDESC[mode];
     if (pixel_clock == 0)
         return PCO_ERROR_IS_ERROR;
+
+    if (mode == PCO_SCANMODE_SLOW)
+        pco->transfer.DataFormat = SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x16;
+    else if (mode == PCO_SCANMODE_FAST)
+        pco->transfer.DataFormat = SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x12;
+
+    if ((err = pco_set_cl_config(pco) != PCO_NOERROR) != PCO_NOERROR)
+        return err;
 
     SC2_Set_Pixelrate com;
     com.wCode = SET_PIXELRATE;
@@ -381,14 +390,41 @@ unsigned int pco_set_delay_exposure(struct pco_edge_t *pco, uint32_t delay, uint
 
 unsigned int pco_get_delay_exposure(struct pco_edge_t *pco, uint32_t *delay, uint32_t *exposure)
 {
-   uint32_t err = PCO_NOERROR;
-
+   unsigned int err = PCO_NOERROR;
    SC2_Delay_Exposure_Response resp;
    if (pco_read_property(pco, GET_DELAY_EXPOSURE_TIME, &resp, sizeof(resp)) == PCO_NOERROR) {
        *delay = resp.dwDelay;
        *exposure = resp.dwExposure;
    }
    return err;
+}
+
+unsigned int pco_set_roi(struct pco_edge_t *pco, uint16_t *window)
+{
+    SC2_Set_ROI com;
+    SC2_ROI_Response resp;
+
+    com.wCode = SET_ROI;
+    com.wSize = sizeof(com);
+    com.wROI_x0 = window[0];
+    com.wROI_y0 = window[1];
+    com.wROI_x1 = window[2];
+    com.wROI_y1 = window[3];
+    return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
+}
+
+unsigned int pco_get_roi(struct pco_edge_t *pco, uint16_t *window)
+{
+    unsigned int err = PCO_NOERROR;
+    SC2_ROI_Response resp;
+    /*if (pco_read_property(pco, GET_ROI, &resp, sizeof(resp)) == PCO_NOERROR) {*/
+    pco_read_property(pco, GET_ROI, &resp, sizeof(resp));
+        window[0] = resp.wROI_x0;
+        window[1] = resp.wROI_y0;
+        window[2] = resp.wROI_x1;
+        window[3] = resp.wROI_y1;
+    /*}*/
+    return err; 
 }
 
 unsigned int pco_arm_camera(struct pco_edge_t *pco)

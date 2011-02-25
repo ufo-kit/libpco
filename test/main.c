@@ -165,6 +165,9 @@ int main(int argc, char const* argv[])
         if (pco->description.dwPixelRateDESC[i] > 0)
             printf("  Pixelclock %i: %.2f MHz\n", i+1, pco->description.dwPixelRateDESC[i] / 1000000.0f);
     }
+    printf(" ROI steps: <%i,%i>\n", pco->description.wRoiHorStepsDESC, pco->description.wRoiVertStepsDESC);
+
+    pco_set_scan_mode(pco, PCO_SCANMODE_FAST);
 
     printf(" Clock frequency: %i MHz\n", pco->transfer.ClockFrequency/1000000);
     printf(" Data format: 0x0%x\n", (pco->transfer.DataFormat & PCO_CL_DATAFORMAT_MASK));
@@ -195,14 +198,20 @@ int main(int argc, char const* argv[])
     if (pco_set_timebase(pco, 1, 1) != PCO_NOERROR)
         PCO_ERROR_LOG("SET TIMEBASE failed");
 
-    pco->transfer.DataFormat = SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x16;
-    if (pco_set_cl_config(pco) != PCO_NOERROR)
-        PCO_ERROR_LOG("Setting CameraLink config failed");
+    pco_set_scan_mode(pco, PCO_SCANMODE_SLOW);
+
+    uint16_t roi_window[4] = {1, 1, 320, 240};
+    if (pco_set_roi(pco, roi_window) != PCO_NOERROR)
+        printf(" Couldn't set ROI\n");
+    pco_get_roi(pco, roi_window);
+    printf(" ROI: <%i,%i> to <%i,%i>\n", roi_window[0], roi_window[1], roi_window[2], roi_window[3]);
+
+    uint32_t width = roi_window[2]-roi_window[0] + 1;
+    uint32_t height = roi_window[3]-roi_window[1] + 1;
 
     if (pco_arm_camera(pco) != PCO_NOERROR)
         PCO_ERROR_LOG("Couldn't ARM camera\n");
 
-    uint32_t width, height;
     if (pco_get_actual_size(pco, &width, &height) == PCO_NOERROR) {
         printf(" Dimensions: %ix%i\n", width, height);
     }
@@ -222,11 +231,8 @@ int main(int argc, char const* argv[])
     check_error_fg(fg, Fg_setParameter(fg, FG_TRIGGERMODE, &val, PORT_A));
 
     width *= 2;
-
     check_error_fg(fg, Fg_setParameter(fg, FG_WIDTH, &width, PORT_A));
     check_error_fg(fg, Fg_setParameter(fg, FG_HEIGHT, &height, PORT_A));
-    printf(" Actual dimensions: %ix%i\n", width, height);
-
     width /= 2;
 
     if (fg != NULL) {
@@ -268,7 +274,8 @@ int main(int argc, char const* argv[])
         printf(" Timed out\n");
     }
     else {
-        long transfered_bytes = n_images * width * height * 2;
+        float factor = pco->transfer.DataFormat & PCO_CL_DATAFORMAT_MASK == PCO_CL_DATAFORMAT_5x12 ? 16./12 : 2.f;
+        float transfered_bytes = n_images * width * height * factor;
         uint64_t elapsed = time_diff(&end, &start);
         printf(" Time: %.2f s\n", (float)(elapsed / 1000000.0f));
         printf(" Bandwidth: %.3f MB/s\n", (transfered_bytes / (1024*1024)) / (elapsed / 1000000.0f));
