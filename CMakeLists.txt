@@ -3,8 +3,8 @@ cmake_minimum_required(VERSION 2.6)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
 
 # --- Find required packages ------------------------------------------------
-find_package(FgLib5 REQUIRED)
 find_package(ClSerMe4 REQUIRED)
+find_package(FgLib5)
 
 include_directories(${CMAKE_SOURCE_DIR}/src ${FGLIB5_INCLUDE_DIR} ${CLSERME4_INCLUDE_DIR})
 
@@ -50,6 +50,7 @@ set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION_MAJOR
 include(CPack)
 
 # --- Build test executable -------------------------------------------------
-add_executable(diagnose test/main.c)
-target_link_libraries(diagnose pco ${FGLIB5_LIBRARY} ${CLSERME4_LIBRARY})
-
+if (FGLIB5_FOUND)
+    add_executable(diagnose test/main.c)
+    target_link_libraries(diagnose pco ${FGLIB5_LIBRARY} ${CLSERME4_LIBRARY})
+endif()
