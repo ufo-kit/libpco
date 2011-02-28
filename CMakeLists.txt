@@ -29,6 +29,26 @@ install(FILES
     
     DESTINATION include/libpco)
 
+set(CPACK_PACKAGE_DESCRIPTION "User-space device access to pco cameras")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "User-space device access to pco cameras")
+set(CPACK_PACKAGE_NAME "libpco")
+
+# --- Distro specific
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libc6 (>= 2.3.6), libgcc1 (>= 1:4.1)")
+set(CPACK_SET_DESTDIR ON)
+
+set(CPACK_PACKAGE_CONTACT "Matthias Vogelgesang")
+set(CPACK_PACKAGE_VENDOR "Karlsruhe Institute of Technology/IPE")
+set(CPACK_PACKAGE_VERSION_MAJOR "0")
+set(CPACK_PACKAGE_VERSION_MINOR "1")
+set(CPACK_PACKAGE_VERSION_PATCH "0")
+set(VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
+
+set(CPACK_GENERATOR "DEB;RPM;")
+set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}-${CMAKE_SYSTEM_PROCESSOR}")
+
+include(CPack)
+
 # --- Build test executable -------------------------------------------------
 add_executable(diagnose test/main.c)
 target_link_libraries(diagnose pco ${FGLIB5_LIBRARY} ${CLSERME4_LIBRARY})
