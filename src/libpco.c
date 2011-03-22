@@ -66,7 +66,7 @@ static void decode_line(int width, void *bufout, void* bufin)
     }
 }
 
-void pco_reorder_image_5x12(uint16_t *bufout, uint16_t *bufin, int width, int height)
+static void pco_reorder_image_5x12(uint16_t *bufout, uint16_t *bufin, int width, int height)
 {
     uint16_t *line_top = bufout;
     uint16_t *line_bottom = bufout + (height-1)*width;
@@ -83,7 +83,7 @@ void pco_reorder_image_5x12(uint16_t *bufout, uint16_t *bufin, int width, int he
     }
 }
 
-void pco_reorder_image_5x16(uint16_t *bufout, uint16_t *bufin, int width, int height)
+static void pco_reorder_image_5x16(uint16_t *bufout, uint16_t *bufin, int width, int height)
 {
     uint16_t *line_top = bufout;
     uint16_t *line_bottom = bufout + (height-1)*width;
@@ -226,6 +226,41 @@ unsigned int pco_control_command(struct pco_edge *pco,
     return err;
 }
 
+static unsigned int pco_set_cl_config(struct pco_edge *pco)
+{
+    SC2_Set_CL_Configuration cl_com;
+    SC2_Get_CL_Configuration_Response cl_resp;
+    unsigned int err = PCO_NOERROR;
+
+    cl_com.wCode = SET_CL_CONFIGURATION;
+    cl_com.wSize = sizeof(cl_com);
+    cl_com.dwClockFrequency = pco->transfer.ClockFrequency;
+    cl_com.bTransmit = pco->transfer.Transmit & 0xFF;
+    cl_com.bCCline = pco->transfer.CCline & 0xFF;
+    cl_com.bDataFormat = pco->transfer.DataFormat & 0xFF;
+
+    err = pco_control_command(pco, &cl_com, sizeof(cl_com), &cl_resp, sizeof(cl_resp));
+    if (err != PCO_NOERROR) {
+        PCO_ERROR_LOG("SET_CL_CONFIGURATION failed");
+        return err;
+    }
+
+    if ((pco->description.wSensorTypeDESC == SENSOR_CIS2051_V1_FI_BW) ||
+        (pco->description.wSensorTypeDESC == SENSOR_CIS2051_V1_BI_BW)) {
+        SC2_Set_Interface_Output_Format com_set_if;
+        SC2_Set_Interface_Output_Format_Response resp_if;
+
+        com_set_if.wCode = SET_INTERFACE_OUTPUT_FORMAT;
+        com_set_if.wSize= sizeof(com_set_if);
+        com_set_if.wFormat = pco->transfer.DataFormat & SCCMOS_FORMAT_MASK;
+        com_set_if.wInterface = INTERFACE_CL_SCCMOS;
+        err = pco_control_command(pco, &com_set_if, sizeof(com_set_if), &resp_if, sizeof(resp_if));
+        if (err != PCO_NOERROR)
+            PCO_ERROR_LOG("SCCMOS SET_INTERFACE_OUTPUT_FORMAT");
+    }
+    return err;
+}
+
 unsigned int pco_is_active(struct pco_edge *pco)
 {
     SC2_Camera_Type_Response resp;
@@ -343,40 +378,6 @@ static unsigned int pco_retrieve_cl_config(struct pco_edge *pco)
     return err;
 }
 
-unsigned int pco_set_cl_config(struct pco_edge *pco)
-{
-    SC2_Set_CL_Configuration cl_com;
-    SC2_Get_CL_Configuration_Response cl_resp;
-    unsigned int err = PCO_NOERROR;
-
-    cl_com.wCode = SET_CL_CONFIGURATION;
-    cl_com.wSize = sizeof(cl_com);
-    cl_com.dwClockFrequency = pco->transfer.ClockFrequency;
-    cl_com.bTransmit = pco->transfer.Transmit & 0xFF;
-    cl_com.bCCline = pco->transfer.CCline & 0xFF;
-    cl_com.bDataFormat = pco->transfer.DataFormat & 0xFF;
-
-    err = pco_control_command(pco, &cl_com, sizeof(cl_com), &cl_resp, sizeof(cl_resp));
-    if (err != PCO_NOERROR) {
-        PCO_ERROR_LOG("SET_CL_CONFIGURATION failed");
-        return err;
-    }
-
-    if ((pco->description.wSensorTypeDESC == SENSOR_CIS2051_V1_FI_BW) ||
-        (pco->description.wSensorTypeDESC == SENSOR_CIS2051_V1_BI_BW)) {
-        SC2_Set_Interface_Output_Format com_set_if;
-        SC2_Set_Interface_Output_Format_Response resp_if;
-
-        com_set_if.wCode = SET_INTERFACE_OUTPUT_FORMAT;
-        com_set_if.wSize= sizeof(com_set_if);
-        com_set_if.wFormat = pco->transfer.DataFormat & SCCMOS_FORMAT_MASK;
-        com_set_if.wInterface = INTERFACE_CL_SCCMOS;
-        err = pco_control_command(pco, &com_set_if, sizeof(com_set_if), &resp_if, sizeof(resp_if));
-        if (err != PCO_NOERROR)
-            PCO_ERROR_LOG("SCCMOS SET_INTERFACE_OUTPUT_FORMAT");
-    }
-    return err;
-}
 
 unsigned int pco_read_property(struct pco_edge *pco, uint16_t code, void *dst, uint32_t size)
 {
