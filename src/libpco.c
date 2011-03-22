@@ -156,7 +156,7 @@ static void pco_msleep(int time)
         PCO_ERROR_LOG("error in select");
 }
 
-unsigned int pco_control_command(struct pco_edge_t *pco,
+unsigned int pco_control_command(struct pco_edge *pco,
         void *buffer_in, uint32_t size_in,
         void *buffer_out, uint32_t size_out)
 {
@@ -226,23 +226,27 @@ unsigned int pco_control_command(struct pco_edge_t *pco,
     return err;
 }
 
-unsigned int pco_is_active(struct pco_edge_t *pco)
+unsigned int pco_is_active(struct pco_edge *pco)
 {
     SC2_Camera_Type_Response resp;
     return pco_read_property(pco, GET_CAMERA_TYPE, &resp, sizeof(resp)) == PCO_NOERROR;
 }
 
-unsigned int pco_set_scan_mode(struct pco_edge_t *pco, uint32_t mode)
+unsigned int pco_set_scan_mode(struct pco_edge *pco, uint32_t mode)
 {
     unsigned int err = PCO_NOERROR;
     const uint32_t pixel_clock = pco->description.dwPixelRateDESC[mode];
     if (pixel_clock == 0)
         return PCO_ERROR_IS_ERROR;
 
-    if (mode == PCO_SCANMODE_SLOW)
+    if (mode == PCO_SCANMODE_SLOW) {
+        pco->reorder_image = &pco_reorder_image_5x16;
         pco->transfer.DataFormat = SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x16;
-    else if (mode == PCO_SCANMODE_FAST)
+    }
+    else if (mode == PCO_SCANMODE_FAST) {
+        pco->reorder_image = &pco_reorder_image_5x12;
         pco->transfer.DataFormat = SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x12;
+    }
 
     if ((err = pco_set_cl_config(pco)) != PCO_NOERROR) 
         return err;
@@ -256,7 +260,7 @@ unsigned int pco_set_scan_mode(struct pco_edge_t *pco, uint32_t mode)
     return pco_control_command(pco, &com, sizeof(SC2_Set_Pixelrate), &resp, sizeof(SC2_Pixelrate_Response));
 }
 
-unsigned int pco_get_scan_mode(struct pco_edge_t *pco, uint32_t *mode)
+unsigned int pco_get_scan_mode(struct pco_edge *pco, uint32_t *mode)
 {
     unsigned int err = PCO_NOERROR;
     SC2_Pixelrate_Response pixelrate;
@@ -274,7 +278,7 @@ unsigned int pco_get_scan_mode(struct pco_edge_t *pco, uint32_t *mode)
     return err;
 }
 
-static unsigned int pco_scan_and_set_baud_rate(struct pco_edge_t *pco)
+static unsigned int pco_scan_and_set_baud_rate(struct pco_edge *pco)
 {
     static uint32_t baudrates[6][2] = { 
         { CL_BAUDRATE_115200, 115200 },
@@ -308,7 +312,7 @@ static unsigned int pco_scan_and_set_baud_rate(struct pco_edge_t *pco)
     return err;
 }
 
-static unsigned int pco_retrieve_cl_config(struct pco_edge_t *pco)
+static unsigned int pco_retrieve_cl_config(struct pco_edge *pco)
 {
     SC2_Simple_Telegram com;
     SC2_Get_CL_Configuration_Response resp;
@@ -339,7 +343,7 @@ static unsigned int pco_retrieve_cl_config(struct pco_edge_t *pco)
     return err;
 }
 
-unsigned int pco_set_cl_config(struct pco_edge_t *pco)
+unsigned int pco_set_cl_config(struct pco_edge *pco)
 {
     SC2_Set_CL_Configuration cl_com;
     SC2_Get_CL_Configuration_Response cl_resp;
@@ -374,7 +378,7 @@ unsigned int pco_set_cl_config(struct pco_edge_t *pco)
     return err;
 }
 
-unsigned int pco_read_property(struct pco_edge_t *pco, uint16_t code, void *dst, uint32_t size)
+unsigned int pco_read_property(struct pco_edge *pco, uint16_t code, void *dst, uint32_t size)
 {
     SC2_Simple_Telegram com;
     com.wCode = code;
@@ -382,7 +386,7 @@ unsigned int pco_read_property(struct pco_edge_t *pco, uint16_t code, void *dst,
     return pco_control_command(pco, &com, sizeof(com), dst, size); 
 }
 
-unsigned int pco_get_rec_state(struct pco_edge_t *pco, uint16_t *state)
+unsigned int pco_get_rec_state(struct pco_edge *pco, uint16_t *state)
 {
     SC2_Recording_State_Response resp;
     SC2_Simple_Telegram com;
@@ -397,7 +401,7 @@ unsigned int pco_get_rec_state(struct pco_edge_t *pco, uint16_t *state)
     return err;
 }
 
-unsigned int pco_set_rec_state(struct pco_edge_t *pco, uint16_t state)
+unsigned int pco_set_rec_state(struct pco_edge *pco, uint16_t state)
 {
 #define REC_WAIT_TIME 500
 
@@ -445,7 +449,7 @@ unsigned int pco_set_rec_state(struct pco_edge_t *pco, uint16_t state)
     return err;
 }
 
-unsigned int pco_set_timestamp_mode(struct pco_edge_t *pco, uint16_t mode)
+unsigned int pco_set_timestamp_mode(struct pco_edge *pco, uint16_t mode)
 {
     SC2_Timestamp_Mode_Response resp;
     SC2_Set_Timestamp_Mode com;
@@ -455,7 +459,7 @@ unsigned int pco_set_timestamp_mode(struct pco_edge_t *pco, uint16_t mode)
     return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
 }
 
-unsigned int pco_set_timebase(struct pco_edge_t *pco, uint16_t delay,uint16_t expos)
+unsigned int pco_set_timebase(struct pco_edge *pco, uint16_t delay,uint16_t expos)
 {
    SC2_Set_Timebase com;
    SC2_Timebase_Response resp;
@@ -467,7 +471,7 @@ unsigned int pco_set_timebase(struct pco_edge_t *pco, uint16_t delay,uint16_t ex
    return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
 }
 
-unsigned int pco_set_delay_exposure(struct pco_edge_t *pco, uint32_t delay, uint32_t exposure)
+unsigned int pco_set_delay_exposure(struct pco_edge *pco, uint32_t delay, uint32_t exposure)
 {
    SC2_Set_Delay_Exposure com;
    SC2_Delay_Exposure_Response resp;
@@ -479,7 +483,7 @@ unsigned int pco_set_delay_exposure(struct pco_edge_t *pco, uint32_t delay, uint
    return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
 }
 
-unsigned int pco_get_delay_exposure(struct pco_edge_t *pco, uint32_t *delay, uint32_t *exposure)
+unsigned int pco_get_delay_exposure(struct pco_edge *pco, uint32_t *delay, uint32_t *exposure)
 {
    unsigned int err = PCO_NOERROR;
    SC2_Delay_Exposure_Response resp;
@@ -490,7 +494,7 @@ unsigned int pco_get_delay_exposure(struct pco_edge_t *pco, uint32_t *delay, uin
    return err;
 }
 
-unsigned int pco_set_roi(struct pco_edge_t *pco, uint16_t *window)
+unsigned int pco_set_roi(struct pco_edge *pco, uint16_t *window)
 {
     SC2_Set_ROI com;
     SC2_ROI_Response resp;
@@ -504,7 +508,7 @@ unsigned int pco_set_roi(struct pco_edge_t *pco, uint16_t *window)
     return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
 }
 
-unsigned int pco_get_roi(struct pco_edge_t *pco, uint16_t *window)
+unsigned int pco_get_roi(struct pco_edge *pco, uint16_t *window)
 {
     unsigned int err = PCO_NOERROR;
     SC2_ROI_Response resp;
@@ -518,7 +522,7 @@ unsigned int pco_get_roi(struct pco_edge_t *pco, uint16_t *window)
     return err; 
 }
 
-unsigned int pco_arm_camera(struct pco_edge_t *pco)
+unsigned int pco_arm_camera(struct pco_edge *pco)
 {
   SC2_Arm_Camera_Response resp;
   SC2_Simple_Telegram com;
@@ -531,7 +535,7 @@ unsigned int pco_arm_camera(struct pco_edge_t *pco)
   return err;
 }
 
-unsigned int pco_get_actual_size(struct pco_edge_t *pco, uint32_t *width, uint32_t *height)
+unsigned int pco_get_actual_size(struct pco_edge *pco, uint32_t *width, uint32_t *height)
 {
    unsigned int err = PCO_NOERROR;
 
@@ -548,10 +552,10 @@ unsigned int pco_get_actual_size(struct pco_edge_t *pco, uint32_t *width, uint32
    return err;
 }
 
-struct pco_edge_t *pco_init(void)
+struct pco_edge *pco_init(void)
 {
     /* TODO: check memory allocation */
-    struct pco_edge_t *pco = (struct pco_edge_t *) malloc(sizeof(struct pco_edge_t));
+    struct pco_edge *pco = (struct pco_edge *) malloc(sizeof(struct pco_edge));
 
     pco->timeouts.command = PCO_SC2_COMMAND_TIMEOUT;
     pco->timeouts.image = PCO_SC2_IMAGE_TIMEOUT_L;
@@ -583,6 +587,7 @@ struct pco_edge_t *pco_init(void)
         free(pco);
         return NULL;
     }
+    pco_set_scan_mode(pco, PCO_SCANMODE_FAST);
 
     return pco;
 
@@ -591,7 +596,7 @@ no_pco:
     return NULL;
 }
 
-void pco_destroy(struct pco_edge_t *pco)
+void pco_destroy(struct pco_edge *pco)
 {
     for (int i = 0; i < pco->num_ports; i++)
         clSerialClose(pco->serial_refs[i]);

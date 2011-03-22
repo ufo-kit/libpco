@@ -57,7 +57,7 @@ int main(int argc, char const* argv[])
 
     /* CameraLink specific */
     printf("--- CameraLink ---------\n");
-    struct pco_edge_t *pco = pco_init();
+    struct pco_edge *pco = pco_init();
 
     unsigned int buffer_size = 256, version;
     char str[buffer_size];
@@ -100,8 +100,6 @@ int main(int argc, char const* argv[])
 
     printf(" ROI steps: <%i,%i>\n", pco->description.wRoiHorStepsDESC, pco->description.wRoiVertStepsDESC);
 
-    pco_set_scan_mode(pco, PCO_SCANMODE_FAST);
-
     printf(" Clock frequency: %i MHz\n", pco->transfer.ClockFrequency/1000000);
     printf(" Data format: 0x0%x\n", (pco->transfer.DataFormat & PCO_CL_DATAFORMAT_MASK));
     printf(" Transmit continuously: %s\n", (pco->transfer.Transmit ? "yes" : "no"));
@@ -113,7 +111,7 @@ int main(int argc, char const* argv[])
         printf(" Power supply temperature: %i°C\n", temperature.sPStemp);
     }
 
-    pco_set_delay_exposure(pco, 0, 5);
+    pco_set_delay_exposure(pco, 0, 5000);
     SC2_Delay_Exposure_Response de;
     if (pco_read_property(pco, GET_DELAY_EXPOSURE_TIME, &de, sizeof(de)) == PCO_NOERROR) {
         printf(" Delay: %u µs\n", (uint32_t) de.dwDelay);
@@ -126,8 +124,6 @@ int main(int argc, char const* argv[])
 
     if (pco_set_timebase(pco, 1, 1) != PCO_NOERROR)
         PCO_ERROR_LOG("SET TIMEBASE failed");
-
-    pco_set_scan_mode(pco, PCO_SCANMODE_SLOW);
 
     uint16_t roi_window[4] = {1, 1, 640, 480};
     if (pco_set_roi(pco, roi_window) != PCO_NOERROR)
@@ -212,10 +208,7 @@ int main(int argc, char const* argv[])
 
         uint16_t *frame = (uint16_t *) Fg_getImagePtrEx(fg, last_frame, PORT_A, mem);
         uint16_t *image = (uint16_t *) malloc(width*height*2);
-        if ((pco->transfer.DataFormat & PCO_CL_DATAFORMAT_MASK) == PCO_CL_DATAFORMAT_5x12)
-            pco_reorder_image_5x12(image, frame, width, height);
-        else
-            pco_reorder_image_5x16(image, frame, width, height);
+        pco->reorder_image(image, frame, width, height);
 
         FILE *fp = fopen("out.raw", "wb");
         fwrite(image, width*height*2, 1, fp);
