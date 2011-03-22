@@ -8,7 +8,7 @@ find_package(FgLib5)
 
 include_directories(${CMAKE_SOURCE_DIR}/src ${FGLIB5_INCLUDE_DIR} ${CLSERME4_INCLUDE_DIR})
 
-add_definitions("--std=c99 -Wall")
+add_definitions("--std=c99 -Wall -fpack-struct")
 
 # --- Build library and install ---------------------------------------------
 add_library(pco SHARED src/libpco.c)
