@@ -83,7 +83,7 @@ unsigned int pco_set_delay_exposure(struct pco_edge *pco, uint32_t delay, uint32
 unsigned int pco_get_delay_exposure(struct pco_edge *pco, uint32_t *delay, uint32_t *expos);
 unsigned int pco_arm_camera(struct pco_edge *pco);
 unsigned int pco_get_actual_size(struct pco_edge *pco, uint32_t *width, uint32_t *height);
-
+unsigned int pco_set_hotpixel_correction(struct pco_edge *pco, uint32_t mode);
 
 /**
  * Send control data via CameraLink to camera.

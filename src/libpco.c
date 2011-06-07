@@ -523,6 +523,17 @@ unsigned int pco_get_roi(struct pco_edge *pco, uint16_t *window)
     return err; 
 }
 
+unsigned int pco_set_hotpixel_correction(struct pco_edge *pco, uint32_t mode)
+{
+    SC2_Set_Hot_Pixel_Correction_Mode com;
+    SC2_Hot_Pixel_Correction_Mode_Response resp;
+
+    com.wCode = SET_HOT_PIXEL_CORRECTION_MODE;
+    com.wSize = sizeof(com);
+    com.wMode = mode;
+    return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
+}
+
 unsigned int pco_arm_camera(struct pco_edge *pco)
 {
   SC2_Arm_Camera_Response resp;
@@ -552,6 +563,7 @@ unsigned int pco_get_actual_size(struct pco_edge *pco, uint32_t *width, uint32_t
    }
    return err;
 }
+
 
 struct pco_edge *pco_init(void)
 {
