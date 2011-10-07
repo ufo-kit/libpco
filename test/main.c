@@ -56,8 +56,13 @@ int main(int argc, char const* argv[])
     static const char *applet = "libFullAreaGray8.so";
 
     /* CameraLink specific */
-    printf("--- CameraLink ---------\n");
     struct pco_edge *pco = pco_init();
+    if (pco == NULL) {
+        printf("No CameraLink-based PCO camera found\n");
+        return 1;
+    }
+        
+    printf("--- CameraLink ---------\n");
 
     unsigned int buffer_size = 256, version;
     char str[buffer_size];
