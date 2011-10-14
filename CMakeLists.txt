@@ -1,17 +1,26 @@
 cmake_minimum_required(VERSION 2.6)
 
+set(LIBPCO_VERSION_MAJOR "0")
+set(LIBPCO_VERSION_MINOR "1")
+set(LIBPCO_VERSION_PATCH "1")
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
 
 # --- Find required packages ------------------------------------------------
 find_package(ClSerMe4 REQUIRED)
 find_package(FgLib5)
 
-include_directories(${CMAKE_SOURCE_DIR}/src ${FGLIB5_INCLUDE_DIR} ${CLSERME4_INCLUDE_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/src 
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${FGLIB5_INCLUDE_DIR} 
+    ${CLSERME4_INCLUDE_DIR})
 
 add_definitions("--std=c99 -Wall -fpack-struct")
 
 # --- Build library and install ---------------------------------------------
 add_library(pco SHARED src/libpco.c)
+
+configure_file(${CMAKE_SOURCE_DIR}/src/config.h.in
+    ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 install(TARGETS pco
     LIBRARY DESTINATION lib${LIB_SUFFIX})

@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/select.h>
 #include <clser.h>
+
 #include "libpco.h"
 
 #include "sc2_defs.h"
@@ -14,6 +15,7 @@
 #include "sc2_telegram.h"
 #include "sc2_add.h"
 #include "PCO_err.h"
+#include "config.h"
 
 void check_error_cl(int code)
 {
@@ -25,6 +27,8 @@ void check_error_cl(int code)
         printf("Error [%i]: %s\n", code, err);
     }
 }
+
+#define CHECK_ERR_CL(code) if ((code) != CL_OK) fprintf(stderr, "Error %i at %s:%i\n", (code), __FILE__, __LINE__);
 
 /* Courtesy of PCO AG */
 static void decode_line(int width, void *bufout, void* bufin)
@@ -164,23 +168,28 @@ unsigned int pco_control_command(struct pco_edge *pco,
     unsigned int size;
     uint16_t com_in, com_out;
     uint32_t err = PCO_NOERROR;
+    int cl_err = CL_OK;
 
-    check_error_cl(clFlushPort(pco->serial_ref));
+    cl_err = clFlushPort(pco->serial_ref);
+    CHECK_ERR_CL(cl_err);
+
     com_out = 0;
     com_in = *((uint16_t *) buffer_in);
     memset(buffer, 0, PCO_SC2_DEF_BLOCK_SIZE);
 
     size = size_in;
 
-    /* TODO: build checksum */
     err = pco_build_checksum((unsigned char *) buffer_in, (int *) &size);
     if (err != PCO_NOERROR)
         printf("Something happened... but is ignored in the original code\n");
 
-    check_error_cl(clSerialWrite(pco->serial_ref, (char *) buffer_in, &size, pco->timeouts.command));
+    cl_err = clSerialWrite(pco->serial_ref, (char *) buffer_in, &size, pco->timeouts.command);
+    CHECK_ERR_CL(cl_err);
     size = sizeof(uint16_t) * 2;
 
-    clSerialRead(pco->serial_ref, (char *) buffer, &size, pco->timeouts.command*2);
+    pco_msleep(100);
+
+    cl_err = clSerialRead(pco->serial_ref, (char *) buffer, &size, pco->timeouts.command*2);
     com_out = *((uint16_t*) buffer);
 
     uint16_t *b = (uint16_t *) buffer;
@@ -193,8 +202,9 @@ unsigned int pco_control_command(struct pco_edge *pco,
     if ((size < 0) || (com_in != (com_out & 0xFF3F)))
         return PCO_ERROR_DRIVER_IOFAILURE | PCO_ERROR_DRIVER_CAMERALINK;
 
-    err = clSerialRead(pco->serial_ref, (char *) &buffer[sizeof(uint16_t)*2], &size, pco->timeouts.command*2);
-    if (err < 0) 
+    cl_err = clSerialRead(pco->serial_ref, (char *) &buffer[sizeof(uint16_t)*2], &size, pco->timeouts.command*2);
+    CHECK_ERR_CL(cl_err);
+    if (cl_err < 0) 
         return PCO_ERROR_DRIVER_IOFAILURE | PCO_ERROR_DRIVER_CAMERALINK;
 
     com_out = *((uint16_t *) buffer);
@@ -330,11 +340,11 @@ static unsigned int pco_scan_and_set_baud_rate(struct pco_edge *pco)
     SC2_Camera_Type_Response resp;
     com.wCode = GET_CAMERA_TYPE;
     com.wSize = sizeof(SC2_Simple_Telegram);
-    int idx = 0;
+    int idx = 0, cl_err;
 
     while ((err != PCO_NOERROR) && (baudrates[idx][0] != 0)) {
-        clSetBaudRate(pco->serial_ref, baudrates[idx][0]);
-        pco_msleep(150);
+        cl_err = clSetBaudRate(pco->serial_ref, baudrates[idx][0]);
+        pco_msleep(300);
         err = pco_control_command(pco, &com, sizeof(com), &resp, sizeof(SC2_Camera_Type_Response));
         if (err != PCO_NOERROR)
             idx++;
@@ -577,21 +587,28 @@ struct pco_edge *pco_init(void)
     for (int i = 0; i < 4; i++)
         pco->serial_refs[i] = NULL;
 
-    if (clGetNumSerialPorts(&pco->num_ports) != CL_OK)
+    if (clGetNumSerialPorts(&pco->num_ports) != CL_OK) {
+        fprintf(stderr, "Unable to query number of ports\n");
         goto no_pco;
+    }
 
     if (pco->num_ports > 4)
         pco->num_ports = 4;
 
-    for (int i = 0; i < pco->num_ports; i++)
-        if (clSerialInit(i, &pco->serial_refs[i]) != CL_OK)
+    for (int i = 0; i < pco->num_ports; i++) {
+        if (clSerialInit(i, &pco->serial_refs[i]) != CL_OK) {
+            fprintf(stderr, "Unable to initialize serial connection\n");
             goto no_pco;
+        }
+    }
     
     /* Reference the first port for easier access */
     pco->serial_ref = pco->serial_refs[0];
 
-    if (pco_scan_and_set_baud_rate(pco) != PCO_NOERROR)
+    if (pco_scan_and_set_baud_rate(pco) != PCO_NOERROR) {
+        fprintf(stderr, "Unable to scan and set baud rate\n");
         goto no_pco;
+    }
 
     pco_set_rec_state(pco, 0);
     pco_retrieve_cl_config(pco);
@@ -611,6 +628,7 @@ no_pco:
 
 void pco_destroy(struct pco_edge *pco)
 {
+    pco_set_rec_state(pco, 0);
     for (int i = 0; i < pco->num_ports; i++)
         clSerialClose(pco->serial_refs[i]);
     free(pco);

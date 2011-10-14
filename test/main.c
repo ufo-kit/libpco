@@ -123,6 +123,53 @@ int main(int argc, char const* argv[])
         printf(" Exposure: %u µs\n", (uint32_t) de.dwExposure);
     }
 
+    SC2_Acquire_Mode_Response am;
+    if (pco_read_property(pco, GET_ACQUIRE_MODE, &am, sizeof(am)) == PCO_NOERROR) {
+        printf(" Acquire mode: ");
+        switch (am.wMode) {
+            case ACQUIRE_MODE_AUTO:
+                printf("auto\n");
+                break;
+            case ACQUIRE_MODE_EXTERNAL:
+                printf("external\n");
+                break;
+            case ACQUIRE_MODE_EXTERNAL_FRAME_TRIGGER:
+                printf("external frame trigger\n");
+                break;
+            default:
+                printf("[wrong value]\n");
+                break;
+        }
+    }
+
+    SC2_Trigger_Mode_Response tm;
+    if (pco_read_property(pco, GET_TRIGGER_MODE, &tm, sizeof(tm)) == PCO_NOERROR) {
+        printf(" Trigger mode: ");
+        switch (tm.wMode) {
+            case TRIGGER_MODE_AUTOTRIGGER:
+                printf("auto\n");
+                break;
+            case TRIGGER_MODE_SOFTWARETRIGGER:
+                printf("software\n");
+                break;
+            case TRIGGER_MODE_EXTERNALTRIGGER:
+                printf("external\n");
+                break;
+            case TRIGGER_MODE_EXTERNALEXPOSURECONTROL:
+                printf("external exposure control\n");
+                break;
+            case TRIGGER_MODE_SOURCE_HDSDI:
+                printf("hdsdi\n");
+                break;
+            case TRIGGER_MODE_EXTERNAL_SYNCHRONIZED:
+                printf("external synchronized\n");
+                break;
+            default:
+                printf("[wrong value]\n");
+                break;
+        }
+    }
+
     /* Setup for recording */
     if (pco_set_timestamp_mode(pco, 0) != PCO_NOERROR)
         PCO_ERROR_LOG("SET TIMESTAMP failed");
@@ -130,7 +177,7 @@ int main(int argc, char const* argv[])
     if (pco_set_timebase(pco, 1, 1) != PCO_NOERROR)
         PCO_ERROR_LOG("SET TIMEBASE failed");
 
-    uint16_t roi_window[4] = {1, 1, 640, 480};
+    uint16_t roi_window[4] = {1, 1, 1920, 1280};
     if (pco_set_roi(pco, roi_window) != PCO_NOERROR)
         printf(" Couldn't set ROI\n");
     pco_get_roi(pco, roi_window);
@@ -147,27 +194,28 @@ int main(int argc, char const* argv[])
     }
 
     /* Frame grabber specific */
+    int port = PORT_A;
     Fg_Struct * fg;
 
     fg = Fg_Init(applet, 0);
 
     int val = FG_CL_8BIT_FULL_10;
-    check_error_fg(fg, Fg_setParameter(fg, FG_CAMERA_LINK_CAMTYP, &val, PORT_A));
+    check_error_fg(fg, Fg_setParameter(fg, FG_CAMERA_LINK_CAMTYP, &val, port));
 
     val = FG_GRAY;
-    check_error_fg(fg, Fg_setParameter(fg, FG_FORMAT, &val, PORT_A));
+    check_error_fg(fg, Fg_setParameter(fg, FG_FORMAT, &val, port));
 
     val = FREE_RUN;
-    check_error_fg(fg, Fg_setParameter(fg, FG_TRIGGERMODE, &val, PORT_A));
+    check_error_fg(fg, Fg_setParameter(fg, FG_TRIGGERMODE, &val, port));
 
-    width *= 2;
-    check_error_fg(fg, Fg_setParameter(fg, FG_WIDTH, &width, PORT_A));
-    check_error_fg(fg, Fg_setParameter(fg, FG_HEIGHT, &height, PORT_A));
-    width /= 2;
+    /* width *= 2; */
+    check_error_fg(fg, Fg_setParameter(fg, FG_WIDTH, &width, port));
+    check_error_fg(fg, Fg_setParameter(fg, FG_HEIGHT, &height, port));
+    /* width /= 2; */
 
     if (fg != NULL) {
         printf("\n--- Port A -------------\n");
-        print_parameters(fg, PORT_A);
+        print_parameters(fg, port);
         printf("\n--- Port B -------------\n");
         print_parameters(fg, PORT_B);
     }
@@ -184,21 +232,21 @@ int main(int argc, char const* argv[])
         printf(" Couldn't allocate buffer memory\n");
     }
 
-    const int n_images = 20;
+    const int n_images = 1;
 
     pco_set_rec_state(pco, 1);
     printf(" Acquire %d image(s)...", n_images);
     fflush(stdout);
-    check_error_fg(fg, Fg_AcquireEx(fg, 0, n_images, ACQ_STANDARD, mem));
+    check_error_fg(fg, Fg_AcquireEx(fg, port, n_images, ACQ_STANDARD, mem));
 
     frameindex_t last_frame = 1;
     struct timeval start, end;
 
     gettimeofday(&start, NULL);
-    last_frame = Fg_getLastPicNumberBlockingEx(fg, n_images, PORT_A, n_images, mem);
+    last_frame = Fg_getLastPicNumberBlockingEx(fg, n_images, port, n_images, mem);
     gettimeofday(&end, NULL);
-    check_error_fg(fg, Fg_stopAcquireEx(fg, 0, mem, STOP_ASYNC));
-    printf(" done.\n");
+    check_error_fg(fg, Fg_stopAcquireEx(fg, port, mem, STOP_ASYNC));
+    printf(" done. (last frame = %i)\n", last_frame);
 
     if (last_frame < 0) {
         printf(" Timed out\n");
@@ -211,7 +259,7 @@ int main(int argc, char const* argv[])
         printf(" Bandwidth: %.3f MB/s\n", (transfered_bytes / (1024*1024)) / (elapsed / 1000000.0f));
         printf(" Frame rate: %.2f Frames/s\n", n_images / (elapsed / 1000000.0f));
 
-        uint16_t *frame = (uint16_t *) Fg_getImagePtrEx(fg, last_frame, PORT_A, mem);
+        uint16_t *frame = (uint16_t *) Fg_getImagePtrEx(fg, last_frame, port, mem);
         uint16_t *image = (uint16_t *) malloc(width*height*2);
         pco->reorder_image(image, frame, width, height);
 
@@ -220,6 +268,8 @@ int main(int argc, char const* argv[])
         fclose(fp);
         free(image);
     }
+
+    pco_set_rec_state(pco, 0);
 
     /* Close CameraLink interfaces and frame grabber */
     check_error_fg(fg, Fg_FreeMemEx(fg, mem));
