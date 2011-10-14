@@ -235,6 +235,8 @@ int main(int argc, char const* argv[])
     const int n_images = 1;
 
     pco_set_rec_state(pco, 1);
+    pco_request_image(pco);
+
     printf(" Acquire %d image(s)...", n_images);
     fflush(stdout);
     check_error_fg(fg, Fg_AcquireEx(fg, port, n_images, ACQ_STANDARD, mem));

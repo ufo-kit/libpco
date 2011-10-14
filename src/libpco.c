@@ -546,15 +546,28 @@ unsigned int pco_set_hotpixel_correction(struct pco_edge *pco, uint32_t mode)
 
 unsigned int pco_arm_camera(struct pco_edge *pco)
 {
-  SC2_Arm_Camera_Response resp;
-  SC2_Simple_Telegram com;
-  unsigned int err = PCO_NOERROR;
+    SC2_Arm_Camera_Response resp;
+    SC2_Simple_Telegram com;
+    unsigned int err = PCO_NOERROR;
 
-  com.wCode = ARM_CAMERA;
-  com.wSize = sizeof(SC2_Simple_Telegram);
-  err = pco_control_command(pco, &com, sizeof(SC2_Simple_Telegram), &resp, sizeof(SC2_Arm_Camera_Response));
+    com.wCode = ARM_CAMERA;
+    com.wSize = sizeof(SC2_Simple_Telegram);
+    err = pco_control_command(pco, &com, sizeof(SC2_Simple_Telegram), &resp, sizeof(SC2_Arm_Camera_Response));
 
-  return err;
+    return err;
+}
+
+/**
+ * \note since 0.2.0
+ */
+unsigned int pco_request_image(struct pco_edge *pco)
+{
+    SC2_Request_Image req;
+    SC2_Request_Image_Response resp;
+
+    req.wCode = REQUEST_IMAGE;
+    req.wSize = sizeof(req);
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 unsigned int pco_get_actual_size(struct pco_edge *pco, uint32_t *width, uint32_t *height)
@@ -577,8 +590,9 @@ unsigned int pco_get_actual_size(struct pco_edge *pco, uint32_t *width, uint32_t
 
 struct pco_edge *pco_init(void)
 {
-    /* TODO: check memory allocation */
     struct pco_edge *pco = (struct pco_edge *) malloc(sizeof(struct pco_edge));
+    if (pco == NULL)
+        return NULL;
 
     pco->timeouts.command = PCO_SC2_COMMAND_TIMEOUT;
     pco->timeouts.image = PCO_SC2_IMAGE_TIMEOUT_L;

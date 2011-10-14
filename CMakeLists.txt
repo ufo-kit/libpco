@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 
 set(LIBPCO_VERSION_MAJOR "0")
-set(LIBPCO_VERSION_MINOR "1")
-set(LIBPCO_VERSION_PATCH "1")
+set(LIBPCO_VERSION_MINOR "2")
+set(LIBPCO_VERSION_PATCH "0")
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
 
 # --- Find required packages ------------------------------------------------
