@@ -17,6 +17,24 @@
 #include "PCO_err.h"
 #include "config.h"
 
+struct pco_t {
+    unsigned int num_ports;
+    unsigned int baud_rate;
+
+    /**
+     * Pointer to image correction function. This is automatically set to the
+     * correct internal function, when pco_set_scan_mode() is called.
+     */
+    void (*reorder_image)(uint16_t *bufout, uint16_t *bufin, int width, int height);
+
+    void *serial_refs[4];
+    void *serial_ref;
+
+    PCO_SC2_TIMEOUTS timeouts;
+    PCO_SC2_CL_TRANSFER_PARAM transfer;
+    SC2_Camera_Description_Response description;
+};
+
 void check_error_cl(int code)
 {
     static char err[256];
@@ -160,7 +178,7 @@ static void pco_msleep(int time)
         PCO_ERROR_LOG("error in select");
 }
 
-unsigned int pco_control_command(struct pco_edge *pco,
+unsigned int pco_control_command(pco_handle pco,
         void *buffer_in, uint32_t size_in,
         void *buffer_out, uint32_t size_out)
 {
@@ -236,7 +254,7 @@ unsigned int pco_control_command(struct pco_edge *pco,
     return err;
 }
 
-static unsigned int pco_set_cl_config(struct pco_edge *pco)
+static unsigned int pco_set_cl_config(pco_handle pco)
 {
     SC2_Set_CL_Configuration cl_com;
     SC2_Get_CL_Configuration_Response cl_resp;
@@ -256,28 +274,86 @@ static unsigned int pco_set_cl_config(struct pco_edge *pco)
     }
 
     if ((pco->description.wSensorTypeDESC == SENSOR_CIS2051_V1_FI_BW) ||
-        (pco->description.wSensorTypeDESC == SENSOR_CIS2051_V1_BI_BW)) {
-        SC2_Set_Interface_Output_Format com_set_if;
+        (pco->description.wSensorTypeDESC == SENSOR_CIS2051_V1_BI_BW) ||
+        (pco->description.wSensorTypeDESC == SENSOR_CYPRESS_RR_V1_BW)) {
+        SC2_Set_Interface_Output_Format req;
         SC2_Set_Interface_Output_Format_Response resp_if;
 
-        com_set_if.wCode = SET_INTERFACE_OUTPUT_FORMAT;
-        com_set_if.wSize= sizeof(com_set_if);
-        com_set_if.wFormat = pco->transfer.DataFormat & SCCMOS_FORMAT_MASK;
-        com_set_if.wInterface = INTERFACE_CL_SCCMOS;
-        err = pco_control_command(pco, &com_set_if, sizeof(com_set_if), &resp_if, sizeof(resp_if));
+        req.wCode = SET_INTERFACE_OUTPUT_FORMAT;
+        req.wSize= sizeof(req);
+        req.wFormat = pco->transfer.DataFormat & SCCMOS_FORMAT_MASK;
+        req.wInterface = INTERFACE_CL_SCCMOS;
+        err = pco_control_command(pco, &req, sizeof(req), &resp_if, sizeof(resp_if));
         if (err != PCO_NOERROR)
             PCO_ERROR_LOG("SCCMOS SET_INTERFACE_OUTPUT_FORMAT");
     }
     return err;
 }
 
-unsigned int pco_is_active(struct pco_edge *pco)
+/**
+ * \note since 0.2.0
+ */
+unsigned int pco_get_health_state(pco_handle pco, uint32_t *warnings, uint32_t *errors, uint32_t *status)
+{
+    SC2_Camera_Health_Status_Response resp;
+    unsigned int err = pco_read_property(pco, GET_CAMERA_HEALTH_STATUS, &resp, sizeof(resp));
+    if (err == PCO_NOERROR) {
+        *warnings = resp.dwWarnings; 
+        *errors = resp.dwErrors;
+        *status = resp.dwStatus;
+    }
+    return err;
+}
+
+/**
+ * \note since 0.2.0
+ */
+unsigned int pco_reset(pco_handle pco)
+{
+    SC2_Reset_Settings_To_Default_Response resp;
+    return pco_read_property(pco, RESET_SETTINGS_TO_DEFAULT, &resp, sizeof(resp));
+}
+
+/**
+ * \note since 0.2.0
+ */
+unsigned int pco_get_temperature(pco_handle pco, float *ccd, float *camera, float *power)
+{
+    SC2_Temperature_Response resp;
+    unsigned int err = pco_read_property(pco, GET_TEMPERATURE, &resp, sizeof(resp));
+    if (err == PCO_NOERROR) {
+        *ccd = resp.sCCDtemp / 10.0f;
+        *camera = resp.sCamtemp;
+        *power = resp.sPStemp;
+    }
+    return err;
+}
+
+/**
+ * \note since 0.2.0
+ * \note Client program has to free memory of *name
+ */
+unsigned int pco_get_name(pco_handle pco, char **name)
+{
+    SC2_Camera_Name_Response resp;
+    unsigned int err = pco_read_property(pco, GET_CAMERA_NAME, &resp, sizeof(resp));
+    if (err == PCO_NOERROR) {
+        char *s = (char *) malloc(40);
+        strncpy(s, resp.szName, 40);
+        *name = s;
+    }
+    else
+        *name = NULL;
+    return err;
+}
+
+unsigned int pco_is_active(pco_handle pco)
 {
     SC2_Camera_Type_Response resp;
     return pco_read_property(pco, GET_CAMERA_TYPE, &resp, sizeof(resp)) == PCO_NOERROR;
 }
 
-unsigned int pco_set_scan_mode(struct pco_edge *pco, uint32_t mode)
+unsigned int pco_set_scan_mode(pco_handle pco, uint32_t mode)
 {
     unsigned int err = PCO_NOERROR;
     const uint32_t pixel_clock = pco->description.dwPixelRateDESC[mode];
@@ -305,7 +381,7 @@ unsigned int pco_set_scan_mode(struct pco_edge *pco, uint32_t mode)
     return pco_control_command(pco, &com, sizeof(SC2_Set_Pixelrate), &resp, sizeof(SC2_Pixelrate_Response));
 }
 
-unsigned int pco_get_scan_mode(struct pco_edge *pco, uint32_t *mode)
+unsigned int pco_get_scan_mode(pco_handle pco, uint32_t *mode)
 {
     unsigned int err = PCO_NOERROR;
     SC2_Pixelrate_Response pixelrate;
@@ -323,7 +399,7 @@ unsigned int pco_get_scan_mode(struct pco_edge *pco, uint32_t *mode)
     return err;
 }
 
-static unsigned int pco_scan_and_set_baud_rate(struct pco_edge *pco)
+static unsigned int pco_scan_and_set_baud_rate(pco_handle pco)
 {
     static uint32_t baudrates[6][2] = { 
         { CL_BAUDRATE_115200, 115200 },
@@ -357,7 +433,7 @@ static unsigned int pco_scan_and_set_baud_rate(struct pco_edge *pco)
     return err;
 }
 
-static unsigned int pco_retrieve_cl_config(struct pco_edge *pco)
+static unsigned int pco_retrieve_cl_config(pco_handle pco)
 {
     SC2_Simple_Telegram com;
     SC2_Get_CL_Configuration_Response resp;
@@ -380,7 +456,7 @@ static unsigned int pco_retrieve_cl_config(struct pco_edge *pco)
 
     com_iface.wCode = GET_INTERFACE_OUTPUT_FORMAT;
     com_iface.wSize = sizeof(com_iface);
-    com_iface.wInterface = INTERFACE_CL_SCCMOS;
+    com_iface.wInterface = SET_INTERFACE_CAMERALINK;
     err = pco_control_command(pco, &com_iface, sizeof(com_iface), &resp_iface, sizeof(resp_iface));
     if (err == PCO_NOERROR)
         pco->transfer.DataFormat |= resp_iface.wFormat;
@@ -388,16 +464,25 @@ static unsigned int pco_retrieve_cl_config(struct pco_edge *pco)
     return err;
 }
 
-
-unsigned int pco_read_property(struct pco_edge *pco, uint16_t code, void *dst, uint32_t size)
+unsigned int pco_read_property(pco_handle pco, uint16_t code, void *dst, uint32_t size)
 {
-    SC2_Simple_Telegram com;
-    com.wCode = code;
-    com.wSize = sizeof(com);
-    return pco_control_command(pco, &com, sizeof(com), dst, size); 
+    SC2_Simple_Telegram req = { .wCode = code, .wSize = sizeof(req) };
+    return pco_control_command(pco, &req, sizeof(req), dst, size); 
 }
 
-unsigned int pco_get_rec_state(struct pco_edge *pco, uint16_t *state)
+/**
+ * \note since 0.2.0
+ */
+unsigned int pco_force_trigger(pco_handle pco, uint32_t *success)
+{
+    SC2_Force_Trigger_Response resp;
+    unsigned int err = pco_read_property(pco, FORCE_TRIGGER, &resp, sizeof(resp));
+    if (err == PCO_NOERROR)
+        *success = resp.wReturn;
+    return err;
+}
+
+unsigned int pco_get_rec_state(pco_handle pco, uint16_t *state)
 {
     SC2_Recording_State_Response resp;
     SC2_Simple_Telegram com;
@@ -412,7 +497,7 @@ unsigned int pco_get_rec_state(struct pco_edge *pco, uint16_t *state)
     return err;
 }
 
-unsigned int pco_set_rec_state(struct pco_edge *pco, uint16_t state)
+unsigned int pco_set_rec_state(pco_handle pco, uint16_t state)
 {
 #define REC_WAIT_TIME 500
 
@@ -460,7 +545,7 @@ unsigned int pco_set_rec_state(struct pco_edge *pco, uint16_t state)
     return err;
 }
 
-unsigned int pco_set_timestamp_mode(struct pco_edge *pco, uint16_t mode)
+unsigned int pco_set_timestamp_mode(pco_handle pco, uint16_t mode)
 {
     SC2_Timestamp_Mode_Response resp;
     SC2_Set_Timestamp_Mode com;
@@ -470,7 +555,7 @@ unsigned int pco_set_timestamp_mode(struct pco_edge *pco, uint16_t mode)
     return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
 }
 
-unsigned int pco_set_timebase(struct pco_edge *pco, uint16_t delay,uint16_t expos)
+unsigned int pco_set_timebase(pco_handle pco, uint16_t delay,uint16_t expos)
 {
    SC2_Set_Timebase com;
    SC2_Timebase_Response resp;
@@ -482,7 +567,7 @@ unsigned int pco_set_timebase(struct pco_edge *pco, uint16_t delay,uint16_t expo
    return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
 }
 
-unsigned int pco_set_delay_exposure(struct pco_edge *pco, uint32_t delay, uint32_t exposure)
+unsigned int pco_set_delay_exposure(pco_handle pco, uint32_t delay, uint32_t exposure)
 {
    SC2_Set_Delay_Exposure com;
    SC2_Delay_Exposure_Response resp;
@@ -494,7 +579,7 @@ unsigned int pco_set_delay_exposure(struct pco_edge *pco, uint32_t delay, uint32
    return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
 }
 
-unsigned int pco_get_delay_exposure(struct pco_edge *pco, uint32_t *delay, uint32_t *exposure)
+unsigned int pco_get_delay_exposure(pco_handle pco, uint32_t *delay, uint32_t *exposure)
 {
    unsigned int err = PCO_NOERROR;
    SC2_Delay_Exposure_Response resp;
@@ -505,7 +590,7 @@ unsigned int pco_get_delay_exposure(struct pco_edge *pco, uint32_t *delay, uint3
    return err;
 }
 
-unsigned int pco_set_roi(struct pco_edge *pco, uint16_t *window)
+unsigned int pco_set_roi(pco_handle pco, uint16_t *window)
 {
     SC2_Set_ROI com;
     SC2_ROI_Response resp;
@@ -519,7 +604,7 @@ unsigned int pco_set_roi(struct pco_edge *pco, uint16_t *window)
     return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
 }
 
-unsigned int pco_get_roi(struct pco_edge *pco, uint16_t *window)
+unsigned int pco_get_roi(pco_handle pco, uint16_t *window)
 {
     unsigned int err = PCO_NOERROR;
     SC2_ROI_Response resp;
@@ -533,7 +618,7 @@ unsigned int pco_get_roi(struct pco_edge *pco, uint16_t *window)
     return err; 
 }
 
-unsigned int pco_set_hotpixel_correction(struct pco_edge *pco, uint32_t mode)
+unsigned int pco_set_hotpixel_correction(pco_handle pco, uint32_t mode)
 {
     SC2_Set_Hot_Pixel_Correction_Mode com;
     SC2_Hot_Pixel_Correction_Mode_Response resp;
@@ -544,23 +629,57 @@ unsigned int pco_set_hotpixel_correction(struct pco_edge *pco, uint32_t mode)
     return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
 }
 
-unsigned int pco_arm_camera(struct pco_edge *pco)
+/**
+ * \note since 0.2.0
+ */
+unsigned int pco_set_storage_mode(pco_handle pco, uint32_t mode)
 {
+    SC2_Set_Storage_Mode req;
+    SC2_Storage_Mode_Response resp;
+
+    req.wCode = SET_STORAGE_MODE;
+    req.wSize = sizeof(req);
+    req.wMode = mode;
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+}
+
+unsigned int pco_arm_camera(pco_handle pco)
+{
+    SC2_Simple_Telegram req;
     SC2_Arm_Camera_Response resp;
-    SC2_Simple_Telegram com;
-    unsigned int err = PCO_NOERROR;
 
-    com.wCode = ARM_CAMERA;
-    com.wSize = sizeof(SC2_Simple_Telegram);
-    err = pco_control_command(pco, &com, sizeof(SC2_Simple_Telegram), &resp, sizeof(SC2_Arm_Camera_Response));
+    req.wCode = ARM_CAMERA;
+    req.wSize = sizeof(SC2_Simple_Telegram);
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+}
 
+/**
+ * \note since 0.2.0
+ */
+unsigned int pco_get_num_images(pco_handle pco, uint32_t segment, uint32_t *num_images)
+{
+    SC2_Number_of_Images req = { .wCode = GET_NUMBER_OF_IMAGES_IN_SEGMENT, .wSize = sizeof(req), .wSegment = segment };
+    SC2_Number_of_Images_Response resp;
+    unsigned int err = pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    if (err == PCO_NOERROR)
+        *num_images = resp.dwValid;
     return err;
 }
 
 /**
  * \note since 0.2.0
  */
-unsigned int pco_request_image(struct pco_edge *pco)
+unsigned int pco_clear_active_segment(pco_handle pco)
+{
+    SC2_Simple_Telegram req = { .wCode = CLEAR_RAM_SEGMENT, .wSize = sizeof(req) };    
+    SC2_Clear_RAM_Segment_Response resp;
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+}
+
+/**
+ * \note since 0.2.0
+ */
+unsigned int pco_request_image(pco_handle pco)
 {
     SC2_Request_Image req;
     SC2_Request_Image_Response resp;
@@ -570,7 +689,22 @@ unsigned int pco_request_image(struct pco_edge *pco)
     return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
-unsigned int pco_get_actual_size(struct pco_edge *pco, uint32_t *width, uint32_t *height)
+/**
+ * \note since 0.2.0
+ */
+unsigned int pco_read_images(pco_handle pco, uint32_t segment, uint32_t start, uint32_t end)
+{
+    SC2_Read_Images_from_Segment req = { 
+        .wCode = READ_IMAGES_FROM_SEGMENT, 
+        .wSize = sizeof(req),
+        .dwStartImage = start,
+        .dwLastImage = end
+    };
+    SC2_Read_Images_from_Segment_Response resp;
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+}
+
+unsigned int pco_get_actual_size(pco_handle pco, uint32_t *width, uint32_t *height)
 {
    unsigned int err = PCO_NOERROR;
 
@@ -580,17 +714,16 @@ unsigned int pco_get_actual_size(struct pco_edge *pco, uint32_t *width, uint32_t
    com.wSize = sizeof(SC2_Simple_Telegram);
    err = pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
 
-   if(err == PCO_NOERROR) {
+   if (err == PCO_NOERROR) {
        *width = resp.wROI_x1 - resp.wROI_x0 + 1;
        *height = resp.wROI_y1 - resp.wROI_y0 + 1;
    }
    return err;
 }
 
-
-struct pco_edge *pco_init(void)
+pco_handle pco_init(void)
 {
-    struct pco_edge *pco = (struct pco_edge *) malloc(sizeof(struct pco_edge));
+    pco_handle pco = (pco_handle) malloc(sizeof(struct pco_t));
     if (pco == NULL)
         return NULL;
 
@@ -626,12 +759,12 @@ struct pco_edge *pco_init(void)
 
     pco_set_rec_state(pco, 0);
     pco_retrieve_cl_config(pco);
+    pco_set_cl_config(pco);
 
-    if (pco_read_property(pco, GET_CAMERA_DESCRIPTION, &pco->description, sizeof(pco->description)) != PCO_NOERROR) {
-        free(pco);
-        return NULL;
-    }
-    pco_set_scan_mode(pco, PCO_SCANMODE_FAST);
+    if (pco_read_property(pco, GET_CAMERA_DESCRIPTION, &pco->description, sizeof(pco->description)) != PCO_NOERROR)
+        goto no_pco;
+
+    /* pco_set_scan_mode(pco, PCO_SCANMODE_FAST); */
 
     return pco;
 
@@ -640,7 +773,7 @@ no_pco:
     return NULL;
 }
 
-void pco_destroy(struct pco_edge *pco)
+void pco_destroy(pco_handle pco)
 {
     pco_set_rec_state(pco, 0);
     for (int i = 0; i < pco->num_ports; i++)
