@@ -7,7 +7,6 @@
 #include <clser.h>
 
 #include "libpco.h"
-
 #include "sc2_defs.h"
 #include "sc2_cl.h"
 #include "sc2_common.h"
@@ -263,7 +262,7 @@ static unsigned int pco_set_cl_config(pco_handle pco)
     cl_com.wCode = SET_CL_CONFIGURATION;
     cl_com.wSize = sizeof(cl_com);
     cl_com.dwClockFrequency = pco->transfer.ClockFrequency;
-    cl_com.bTransmit = pco->transfer.Transmit & 0xFF;
+    cl_com.bTransmit = 1; //pco->transfer.Transmit & 0xFF;
     cl_com.bCCline = pco->transfer.CCline & 0xFF;
     cl_com.bDataFormat = pco->transfer.DataFormat & 0xFF;
 
@@ -286,6 +285,20 @@ static unsigned int pco_set_cl_config(pco_handle pco)
         err = pco_control_command(pco, &req, sizeof(req), &resp_if, sizeof(resp_if));
         if (err != PCO_NOERROR)
             PCO_ERROR_LOG("SCCMOS SET_INTERFACE_OUTPUT_FORMAT");
+    }
+    return err;
+}
+
+/**
+ * \note since 0.2.0
+ */
+unsigned int pco_get_camera_type(pco_handle pco, uint16_t *type, uint16_t *subtype)
+{
+    SC2_Camera_Type_Response resp;
+    unsigned int err = pco_read_property(pco, GET_CAMERA_TYPE, &resp, sizeof(resp));
+    if (err == PCO_NOERROR) {
+        *type = resp.wCamType;
+        *subtype = resp.wCamSubType;
     }
     return err;
 }
@@ -317,12 +330,12 @@ unsigned int pco_reset(pco_handle pco)
 /**
  * \note since 0.2.0
  */
-unsigned int pco_get_temperature(pco_handle pco, float *ccd, float *camera, float *power)
+unsigned int pco_get_temperature(pco_handle pco, uint32_t *ccd, uint32_t *camera, uint32_t *power)
 {
     SC2_Temperature_Response resp;
     unsigned int err = pco_read_property(pco, GET_TEMPERATURE, &resp, sizeof(resp));
     if (err == PCO_NOERROR) {
-        *ccd = resp.sCCDtemp / 10.0f;
+        *ccd = resp.sCCDtemp;
         *camera = resp.sCamtemp;
         *power = resp.sPStemp;
     }
@@ -345,6 +358,68 @@ unsigned int pco_get_name(pco_handle pco, char **name)
     else
         *name = NULL;
     return err;
+}
+
+/**
+ * \note since 0.2.0
+ */
+unsigned int pco_get_resolution(pco_handle pco, uint16_t *width_std, uint16_t *height_std, uint16_t *width_ex, uint16_t *height_ex)
+{
+    *width_std = pco->description.wMaxHorzResStdDESC;
+    *height_std = pco->description.wMaxVertResStdDESC;
+    *width_ex = pco->description.wMaxHorzResExtDESC;
+    *height_ex = pco->description.wMaxVertResExtDESC;
+    return PCO_NOERROR;
+}
+
+/**
+ * \note since 0.2.0
+ */
+unsigned int pco_get_available_pixelrates(pco_handle pco, uint32_t rates[4], int *num_rates)
+{
+    int j = 0;
+    for (int i = 0; i < 4; i++)
+        if (pco->description.dwPixelRateDESC[i] > 0)
+            rates[j++] = pco->description.dwPixelRateDESC[i];
+
+    *num_rates = j-1;
+    return PCO_NOERROR;
+}
+
+/**
+ * \note since 0.2.0
+ */
+unsigned int pco_get_pixelrate(pco_handle pco, uint32_t *rate)
+{
+    SC2_Pixelrate_Response resp;
+    unsigned int err = pco_read_property(pco, GET_PIXELRATE, &resp, sizeof(resp));
+    if (err == PCO_NOERROR)
+        *rate = resp.dwPixelrate;
+    return err;
+}
+
+/**
+ * \note since 0.2.0
+ */
+unsigned int pco_set_pixelrate(pco_handle pco, uint32_t rate)
+{
+    SC2_Set_Pixelrate req = { .wCode = SET_PIXELRATE, .wSize = sizeof(req), .dwPixelrate = rate };
+    SC2_Pixelrate_Response resp;
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+}
+
+/**
+ * \note since 0.2.0
+ */
+unsigned int pco_get_available_conversion_factors(pco_handle pco, uint16_t factors[4], int *num_rates)
+{
+    int j = 0;
+    for (int i = 0; i < 4; i++)
+        if (pco->description.wConvFactDESC[i] > 0)
+            factors[j++] = pco->description.wConvFactDESC[i];
+
+    *num_rates = j-1;
+    return PCO_NOERROR;
 }
 
 unsigned int pco_is_active(pco_handle pco)
@@ -473,6 +548,18 @@ unsigned int pco_read_property(pco_handle pco, uint16_t code, void *dst, uint32_
 /**
  * \note since 0.2.0
  */
+unsigned int pco_get_trigger_mode(pco_handle pco, uint16_t *mode)
+{
+    SC2_Trigger_Mode_Response resp;
+    unsigned int err = pco_read_property(pco, GET_TRIGGER_MODE, &resp, sizeof(resp));
+    if (err == PCO_NOERROR)
+        *mode = resp.wMode;
+    return err;
+}
+
+/**
+ * \note since 0.2.0
+ */
 unsigned int pco_force_trigger(pco_handle pco, uint32_t *success)
 {
     SC2_Force_Trigger_Response resp;
@@ -480,6 +567,25 @@ unsigned int pco_force_trigger(pco_handle pco, uint32_t *success)
     if (err == PCO_NOERROR)
         *success = resp.wReturn;
     return err;
+}
+
+/**
+ * \note since 0.2.0
+ */
+unsigned int pco_get_storage_mode(pco_handle pco, uint16_t *mode)
+{
+    SC2_Storage_Mode_Response resp;
+    unsigned int err = pco_read_property(pco, GET_STORAGE_MODE, &resp, sizeof(resp));
+    if (err == PCO_NOERROR)
+        *mode = resp.wMode;
+    return err;
+}
+
+unsigned int pco_set_storage_mode(pco_handle pco, uint16_t mode)
+{
+    SC2_Set_Storage_Mode req = { .wCode = SET_STORAGE_MODE, .wSize = sizeof(req), .wMode = mode };
+    SC2_Storage_Mode_Response resp;
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 unsigned int pco_get_rec_state(pco_handle pco, uint16_t *state)
@@ -543,6 +649,28 @@ unsigned int pco_set_rec_state(pco_handle pco, uint16_t state)
             err=PCO_ERROR_TIMEOUT;
     }
     return err;
+}
+
+/**
+ * \note since 0.2.0
+ */
+unsigned int pco_get_acquire_mode(pco_handle pco, uint16_t *mode)
+{
+    SC2_Acquire_Mode_Response resp;
+    unsigned int err = pco_read_property(pco, GET_ACQUIRE_MODE, &resp, sizeof(resp));
+    if (err == PCO_NOERROR)
+        *mode = resp.wMode;
+    return err;
+}
+
+/**
+ * \note since 0.2.0
+ */
+unsigned int pco_set_acquire_mode(pco_handle pco, uint16_t mode)
+{
+    SC2_Set_Acquire_Mode req = { .wCode = SET_ACQUIRE_MODE, .wSize = sizeof(req), .wMode = mode };
+    SC2_Acquire_Mode_Response resp; 
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 unsigned int pco_set_timestamp_mode(pco_handle pco, uint16_t mode)
@@ -629,20 +757,6 @@ unsigned int pco_set_hotpixel_correction(pco_handle pco, uint32_t mode)
     return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
 }
 
-/**
- * \note since 0.2.0
- */
-unsigned int pco_set_storage_mode(pco_handle pco, uint32_t mode)
-{
-    SC2_Set_Storage_Mode req;
-    SC2_Storage_Mode_Response resp;
-
-    req.wCode = SET_STORAGE_MODE;
-    req.wSize = sizeof(req);
-    req.wMode = mode;
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
-}
-
 unsigned int pco_arm_camera(pco_handle pco)
 {
     SC2_Simple_Telegram req;
@@ -669,6 +783,34 @@ unsigned int pco_get_num_images(pco_handle pco, uint32_t segment, uint32_t *num_
 /**
  * \note since 0.2.0
  */
+unsigned int pco_get_segment_sizes(pco_handle pco, size_t sizes[4])
+{
+    SC2_Camera_RAM_Segment_Size_Response resp;
+    unsigned int err = pco_read_property(pco, GET_CAMERA_RAM_SEGMENT_SIZE, &resp, sizeof(resp));
+    if (err == PCO_NOERROR) {
+        sizes[0] = resp.dwSegment1Size; 
+        sizes[1] = resp.dwSegment2Size; 
+        sizes[2] = resp.dwSegment3Size; 
+        sizes[3] = resp.dwSegment4Size; 
+    }
+    return err;
+}
+
+/**
+ * \note since 0.2.0
+ */
+unsigned int pco_get_active_segment(pco_handle pco, uint16_t *segment)
+{
+    SC2_Active_RAM_Segment_Response resp;
+    unsigned int err = pco_read_property(pco, GET_ACTIVE_RAM_SEGMENT, &resp, sizeof(resp));
+    if (err == PCO_NOERROR)
+        *segment = resp.wSegment;
+    return err;
+}
+
+/**
+ * \note since 0.2.0
+ */
 unsigned int pco_clear_active_segment(pco_handle pco)
 {
     SC2_Simple_Telegram req = { .wCode = CLEAR_RAM_SEGMENT, .wSize = sizeof(req) };    
@@ -681,11 +823,8 @@ unsigned int pco_clear_active_segment(pco_handle pco)
  */
 unsigned int pco_request_image(pco_handle pco)
 {
-    SC2_Request_Image req;
+    SC2_Request_Image req = { .wCode = REQUEST_IMAGE, .wSize = sizeof(req) };
     SC2_Request_Image_Response resp;
-
-    req.wCode = REQUEST_IMAGE;
-    req.wSize = sizeof(req);
     return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
@@ -763,8 +902,6 @@ pco_handle pco_init(void)
 
     if (pco_read_property(pco, GET_CAMERA_DESCRIPTION, &pco->description, sizeof(pco->description)) != PCO_NOERROR)
         goto no_pco;
-
-    /* pco_set_scan_mode(pco, PCO_SCANMODE_FAST); */
 
     return pco;
 

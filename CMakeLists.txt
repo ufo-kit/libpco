@@ -27,12 +27,7 @@ install(TARGETS pco
 
 install(FILES
     src/libpco.h 
-    src/sc2_cl.h
-    src/sc2_add.h
-    src/sc2_command.h
-    src/sc2_common.h
-    src/sc2_telegram.h
-    src/sc2_drv_struct.h
+    src/sc2_defs.h
     src/PCO_err.h
     
     DESTINATION include/libpco)
