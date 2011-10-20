@@ -81,6 +81,7 @@ unsigned int pco_set_timebase(pco_handle pco, uint16_t delay,uint16_t expos);
 unsigned int pco_set_delay_exposure(pco_handle pco, uint32_t delay, uint32_t expos);
 unsigned int pco_get_delay_exposure(pco_handle pco, uint32_t *delay, uint32_t *expos);
 unsigned int pco_get_trigger_mode(pco_handle pco, uint16_t *mode);
+unsigned int pco_set_trigger_mode(pco_handle pco, uint16_t mode);
 
 unsigned int pco_get_storage_mode(pco_handle pco, uint16_t *mode);
 unsigned int pco_set_storage_mode(pco_handle pco, uint16_t mode);

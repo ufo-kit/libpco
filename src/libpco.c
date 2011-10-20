@@ -548,6 +548,16 @@ unsigned int pco_read_property(pco_handle pco, uint16_t code, void *dst, uint32_
 /**
  * \note since 0.2.0
  */
+unsigned int pco_set_trigger_mode(pco_handle pco, uint16_t mode)
+{
+    SC2_Set_Trigger_Mode req = { .wCode = SET_TRIGGER_MODE, .wSize = sizeof(req), .wMode = mode };
+    SC2_Trigger_Mode_Response resp;
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+}
+
+/**
+ * \note since 0.2.0
+ */
 unsigned int pco_get_trigger_mode(pco_handle pco, uint16_t *mode)
 {
     SC2_Trigger_Mode_Response resp;
