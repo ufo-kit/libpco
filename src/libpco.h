@@ -74,7 +74,7 @@ unsigned int pco_get_segment_sizes(pco_handle pco, size_t sizes[4]);
 unsigned int pco_get_active_segment(pco_handle pco, uint16_t *segment);
 unsigned int pco_clear_active_segment(pco_handle pco);
 
-unsigned int pco_get_num_images(pco_handle pco, uint32_t segment, uint32_t *num_images);
+unsigned int pco_get_num_images(pco_handle pco, uint16_t segment, uint32_t *num_images);
 unsigned int pco_read_property(pco_handle pco, uint16_t code, void *dst, uint32_t size);
 unsigned int pco_force_trigger(pco_handle pco, uint32_t *success);
 unsigned int pco_set_timestamp_mode(pco_handle pco, uint16_t mode);
@@ -95,7 +95,7 @@ unsigned int pco_get_acquire_mode(pco_handle pco, uint16_t *mode);
 unsigned int pco_set_acquire_mode(pco_handle pco, uint16_t mode);
 
 unsigned int pco_request_image(pco_handle pco);
-unsigned int pco_read_images(pco_handle pco, uint32_t segment, uint32_t start, uint32_t end);
+unsigned int pco_read_images(pco_handle pco, uint16_t segment, uint32_t start, uint32_t end);
 unsigned int pco_get_actual_size(pco_handle pco, uint32_t *width, uint32_t *height);
 unsigned int pco_set_hotpixel_correction(pco_handle pco, uint32_t mode);
 

@@ -792,7 +792,7 @@ unsigned int pco_arm_camera(pco_handle pco)
 /**
  * \note since 0.2.0
  */
-unsigned int pco_get_num_images(pco_handle pco, uint32_t segment, uint32_t *num_images)
+unsigned int pco_get_num_images(pco_handle pco, uint16_t segment, uint32_t *num_images)
 {
     SC2_Number_of_Images req = { .wCode = GET_NUMBER_OF_IMAGES_IN_SEGMENT, .wSize = sizeof(req), .wSegment = segment };
     SC2_Number_of_Images_Response resp;
@@ -853,11 +853,12 @@ unsigned int pco_request_image(pco_handle pco)
 /**
  * \note since 0.2.0
  */
-unsigned int pco_read_images(pco_handle pco, uint32_t segment, uint32_t start, uint32_t end)
+unsigned int pco_read_images(pco_handle pco, uint16_t segment, uint32_t start, uint32_t end)
 {
     SC2_Read_Images_from_Segment req = { 
         .wCode = READ_IMAGES_FROM_SEGMENT, 
         .wSize = sizeof(req),
+        .wSegment = segment,
         .dwStartImage = start,
         .dwLastImage = end
     };
