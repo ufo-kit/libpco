@@ -2,7 +2,6 @@
 #define __LIBPCO_H
 
 #include <stdint.h>
-#include "sc2_add.h"
 #include "sc2_defs.h"
 #include "PCO_err.h"
 
@@ -12,6 +11,8 @@ typedef struct pco_t *pco_handle;
 
 #define PCO_SCANMODE_SLOW   0
 #define PCO_SCANMODE_FAST   1
+
+typedef void (*pco_reorder_image_t)(uint16_t *bufout, uint16_t *bufin, int width, int height);
 
 void check_error_cl(int code);
 
@@ -82,6 +83,8 @@ unsigned int pco_set_delay_exposure(pco_handle pco, uint32_t delay, uint32_t exp
 unsigned int pco_get_delay_exposure(pco_handle pco, uint32_t *delay, uint32_t *expos);
 unsigned int pco_get_trigger_mode(pco_handle pco, uint16_t *mode);
 unsigned int pco_set_trigger_mode(pco_handle pco, uint16_t mode);
+unsigned int pco_set_auto_transfer(pco_handle pco, int transfer);
+unsigned int pco_get_auto_transfer(pco_handle pco, int *transfer);
 
 unsigned int pco_get_storage_mode(pco_handle pco, uint16_t *mode);
 unsigned int pco_set_storage_mode(pco_handle pco, uint16_t mode);
@@ -111,5 +114,7 @@ unsigned int pco_set_hotpixel_correction(pco_handle pco, uint32_t mode);
  * \param[out] size_out Size of buffer_out
  */
 unsigned int pco_control_command(pco_handle pco, void *buffer_in, uint32_t size_in, void *buffer_out, uint32_t size_out);
+
+pco_reorder_image_t pco_get_reorder_func(pco_handle pco);
 
 #endif

@@ -262,7 +262,7 @@ static unsigned int pco_set_cl_config(pco_handle pco)
     cl_com.wCode = SET_CL_CONFIGURATION;
     cl_com.wSize = sizeof(cl_com);
     cl_com.dwClockFrequency = pco->transfer.ClockFrequency;
-    cl_com.bTransmit = 1; //pco->transfer.Transmit & 0xFF;
+    cl_com.bTransmit = pco->transfer.Transmit & 0xFF;
     cl_com.bCCline = pco->transfer.CCline & 0xFF;
     cl_com.bDataFormat = pco->transfer.DataFormat & 0xFF;
 
@@ -567,6 +567,18 @@ unsigned int pco_get_trigger_mode(pco_handle pco, uint16_t *mode)
     return err;
 }
 
+unsigned int pco_set_auto_transfer(pco_handle pco, int transfer)
+{
+    pco->transfer.Transmit = transfer ? 1 : 0;
+    return pco_set_cl_config(pco);
+}
+
+unsigned int pco_get_auto_transfer(pco_handle pco, int *transfer)
+{
+    *transfer = pco->transfer.Transmit ? 1 : 0;
+    return PCO_NOERROR;
+}
+
 /**
  * \note since 0.2.0
  */
@@ -868,6 +880,11 @@ unsigned int pco_get_actual_size(pco_handle pco, uint32_t *width, uint32_t *heig
        *height = resp.wROI_y1 - resp.wROI_y0 + 1;
    }
    return err;
+}
+
+pco_reorder_image_t pco_get_reorder_func(pco_handle pco)
+{
+    return pco->reorder_image;
 }
 
 pco_handle pco_init(void)
