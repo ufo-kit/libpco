@@ -2,6 +2,7 @@
 #define __LIBPCO_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "sc2_defs.h"
 #include "PCO_err.h"
 
@@ -73,6 +74,8 @@ unsigned int pco_get_roi(pco_handle pco, uint16_t *window);
 unsigned int pco_get_segment_sizes(pco_handle pco, size_t sizes[4]);
 unsigned int pco_get_active_segment(pco_handle pco, uint16_t *segment);
 unsigned int pco_clear_active_segment(pco_handle pco);
+unsigned int pco_get_bit_alignment(pco_handle pco, bool *msb_aligned);
+unsigned int pco_set_bit_alignment(pco_handle pco, bool msb_aligned);
 
 unsigned int pco_get_num_images(pco_handle pco, uint16_t segment, uint32_t *num_images);
 unsigned int pco_read_property(pco_handle pco, uint16_t code, void *dst, uint32_t size);

@@ -273,8 +273,7 @@ static unsigned int pco_set_cl_config(pco_handle pco)
     }
 
     if ((pco->description.wSensorTypeDESC == SENSOR_CIS2051_V1_FI_BW) ||
-        (pco->description.wSensorTypeDESC == SENSOR_CIS2051_V1_BI_BW) ||
-        (pco->description.wSensorTypeDESC == SENSOR_CYPRESS_RR_V1_BW)) {
+        (pco->description.wSensorTypeDESC == SENSOR_CIS2051_V1_BI_BW)) {
         SC2_Set_Interface_Output_Format req;
         SC2_Set_Interface_Output_Format_Response resp_if;
 
@@ -843,6 +842,33 @@ unsigned int pco_clear_active_segment(pco_handle pco)
 /**
  * \note since 0.2.0
  */
+unsigned int pco_get_bit_alignment(pco_handle pco, bool *msb_aligned)
+{
+    SC2_Bit_Alignment_Response resp;
+    unsigned int err = pco_read_property(pco, GET_BIT_ALIGNMENT, &resp, sizeof(resp));
+    if (err == PCO_NOERROR)
+        *msb_aligned = resp.wAlignment == 0;
+    return err;
+}
+
+/**
+ * \note since 0.2.0
+ */
+unsigned int pco_set_bit_alignment(pco_handle pco, bool msb_aligned)
+{
+    SC2_Set_Bit_Alignment req = { 
+        .wCode = SET_BIT_ALIGNMENT, 
+        .wSize = sizeof(req), 
+        .wAlignment = msb_aligned ? 0 : 1 
+    };
+    SC2_Bit_Alignment_Response resp;
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+}
+
+
+/**
+ * \note since 0.2.0
+ */
 unsigned int pco_request_image(pco_handle pco)
 {
     SC2_Request_Image req = { .wCode = REQUEST_IMAGE, .wSize = sizeof(req) };
@@ -926,7 +952,9 @@ pco_handle pco_init(void)
 
     pco_set_rec_state(pco, 0);
     pco_retrieve_cl_config(pco);
-    pco_set_cl_config(pco);
+
+    /* Okay pco. You like to torture me. With insane default settings. */
+    pco_set_bit_alignment(pco, false);
 
     if (pco_read_property(pco, GET_CAMERA_DESCRIPTION, &pco->description, sizeof(pco->description)) != PCO_NOERROR)
         goto no_pco;
