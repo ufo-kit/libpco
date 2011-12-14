@@ -12,7 +12,7 @@
 
 #include "clser.h"
 
-#define check_error_fg(fg, code) if ((code) != FG_OK) \
+#define CHECK_ERROR_FG(fg, code) if ((code) != FG_OK) \
     fprintf(stderr, "Error at line %i: %i\n", __LINE__, Fg_getLastErrorNumber((fg)));
 
 #define CHECK_PCO(err) if ((err) != PCO_NOERROR) fprintf(stderr, "error at %s:%i\n", __FILE__, __LINE__);
@@ -66,7 +66,7 @@ void print_parameters(Fg_Struct *fg, unsigned int dma_index)
     int value, ret; 
     for (int i = 0; params[i].desc != NULL; i++) {
         ret = Fg_getParameter(fg, params[i].parameter, &value, dma_index);
-        check_error_fg(fg, ret);
+        CHECK_ERROR_FG(fg, ret);
         printf(" %s: %i\n", params[i].desc, value);
     }
 }
@@ -129,6 +129,12 @@ int main(int argc, char const* argv[])
     CHECK_PCO(pco_get_delay_exposure(pco, &delay, &exposure));
     printf(" Delay: %u µs\n", delay);
     printf(" Exposure: %u µs\n", exposure);
+
+    CHECK_PCO(pco_set_auto_transfer(pco, 1));
+    int transfer = 0;
+    if (pco_get_auto_transfer(pco, &transfer) == PCO_NOERROR) {
+        printf(" Auto-transfer: %i\n", transfer); 
+    }
 
     uint16_t mode;
     if (pco_get_acquire_mode(pco, &mode) == PCO_NOERROR) {
@@ -193,7 +199,7 @@ int main(int argc, char const* argv[])
         printf(" Segment sizes: %i, %i, %i, %i pages\n", (int) sizes[0], (int) sizes[1], (int) sizes[2], (int) sizes[3]);
 
     uint16_t active_segment;
-    if (pco_get_active_segment(pco, &active_segment))
+    if (pco_get_active_segment(pco, &active_segment) == PCO_NOERROR)
         printf(" Active segment: %i\n", active_segment);
 
     CHECK_PCO(pco_clear_active_segment(pco));
@@ -222,20 +228,20 @@ int main(int argc, char const* argv[])
     /* Frame grabber specific */
     static const char *applet = "libDualAreaGray16.so";
     int port = PORT_A;
-    Fg_Struct * fg = Fg_Init(applet, 0);
+    Fg_Struct *fg = Fg_Init(applet, 0);
 
-    int val = FG_CL_SINGLETAP_8_BIT;
-    check_error_fg(fg, Fg_setParameter(fg, FG_CAMERA_LINK_CAMTYP, &val, port));
+    int val = FG_CL_SINGLETAP_16_BIT;
+    CHECK_ERROR_FG(fg, Fg_setParameter(fg, FG_CAMERA_LINK_CAMTYP, &val, port));
 
     val = FG_GRAY16;
-    check_error_fg(fg, Fg_setParameter(fg, FG_FORMAT, &val, port));
+    CHECK_ERROR_FG(fg, Fg_setParameter(fg, FG_FORMAT, &val, port));
 
     val = FREE_RUN;
-    check_error_fg(fg, Fg_setParameter(fg, FG_TRIGGERMODE, &val, port));
+    CHECK_ERROR_FG(fg, Fg_setParameter(fg, FG_TRIGGERMODE, &val, port));
 
     /* width *= 2; */
-    check_error_fg(fg, Fg_setParameter(fg, FG_WIDTH, &width, port));
-    check_error_fg(fg, Fg_setParameter(fg, FG_HEIGHT, &height, port));
+    CHECK_ERROR_FG(fg, Fg_setParameter(fg, FG_WIDTH, &width, port));
+    CHECK_ERROR_FG(fg, Fg_setParameter(fg, FG_HEIGHT, &height, port));
     /* width /= 2; */
 
     printf("\n--- Port A -------------\n");
@@ -257,19 +263,21 @@ int main(int argc, char const* argv[])
     fflush(stdout);
 
     CHECK_PCO(pco_set_rec_state(pco, 1));
-
-    for (int i = 0; i < n_images; i++)
-        CHECK_PCO(pco_request_image(pco));
-
-    check_error_fg(fg, Fg_AcquireEx(fg, port, n_images, ACQ_STANDARD, mem));
+    CHECK_ERROR_FG(fg, Fg_AcquireEx(fg, port, n_images, ACQ_STANDARD, mem));
 
     frameindex_t last_frame = 1;
     struct timeval start, end;
 
+    sleep(3);
+    if (pco_get_num_images(pco, active_segment, &num_images) == PCO_NOERROR)
+        printf(" Number of valid images: %i\n", num_images);
+
+    /* CHECK_PCO(pco_read_images(pco, active_segment, 1, 1)); */
+    CHECK_PCO(pco_request_image(pco));
     gettimeofday(&start, NULL);
     last_frame = Fg_getLastPicNumberBlockingEx(fg, n_images, port, n_images, mem);
     gettimeofday(&end, NULL);
-    check_error_fg(fg, Fg_stopAcquireEx(fg, port, mem, STOP_ASYNC));
+    CHECK_ERROR_FG(fg, Fg_stopAcquireEx(fg, port, mem, STOP_ASYNC));
     printf(" done. (last frame = %i)\n", (unsigned int) last_frame);
 
     if (last_frame < 0) {
@@ -300,7 +308,7 @@ int main(int argc, char const* argv[])
         printf(" Number of valid images: %i\n", num_images);
 
     /* Close CameraLink interfaces and frame grabber */
-    check_error_fg(fg, Fg_FreeMemEx(fg, mem));
+    CHECK_ERROR_FG(fg, Fg_FreeMemEx(fg, mem));
     Fg_FreeGrabber(fg);
 
     pco_destroy(pco);

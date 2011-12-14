@@ -54,36 +54,33 @@ static void decode_line(int width, void *bufout, void* bufin)
     uint32_t *lineadr_out = (uint32_t *) bufout;
     uint32_t a;
 
-    for (int x = 0; x < (width*12)/32;) {
-        a = (*lineadr_in&0x0000FFF0)>>4;
-        a|= (*lineadr_in&0x0000000F)<<24;
-        a|= (*lineadr_in&0xFF000000)>>8;
+    for (int x = 0; x < (width*12) / 32; x += 3) {
+        a = (*lineadr_in & 0x0000FFF0) >> 4;
+        a |= (*lineadr_in & 0x0000000F) << 24;
+        a |= (*lineadr_in & 0xFF000000) >> 8;
         *lineadr_out = a;
         lineadr_out++;
 
-        a = (*lineadr_in&0x00FF0000)>>12;
+        a = (*lineadr_in & 0x00FF0000) >> 12;
         lineadr_in++;
-        x++;
-        a|= (*lineadr_in&0x0000F000)>>12;
-        a|= (*lineadr_in&0x00000FFF)<<16;
+        a |= (*lineadr_in & 0x0000F000) >> 12;
+        a |= (*lineadr_in & 0x00000FFF) << 16;
         *lineadr_out = a;
         lineadr_out++;
 
-        a = (*lineadr_in&0xFFF00000)>>20;
-        a|= (*lineadr_in&0x000F0000)<<8;
+        a = (*lineadr_in & 0xFFF00000) >> 20;
+        a |= (*lineadr_in & 0x000F0000) << 8;
         lineadr_in++;
-        x++;
-        a|= (*lineadr_in&0x0000FF00)<<8;
+        a |= (*lineadr_in & 0x0000FF00) << 8;
         *lineadr_out = a;
         lineadr_out++;
 
-        a = (*lineadr_in&0x000000FF)<<4;
-        a|= (*lineadr_in&0xF0000000)>>28;
-        a|= (*lineadr_in&0x0FFF0000);
+        a = (*lineadr_in & 0x000000FF) << 4;
+        a |= (*lineadr_in & 0xF0000000) >> 28;
+        a |= (*lineadr_in & 0x0FFF0000);
         *lineadr_out = a;
         lineadr_out++;
         lineadr_in++;
-        x++;
     }
 }
 
@@ -206,7 +203,9 @@ unsigned int pco_control_command(pco_handle pco,
 
     pco_msleep(100);
 
-    cl_err = clSerialRead(pco->serial_ref, (char *) buffer, &size, pco->timeouts.command*2);
+    /* XXX: The pco.4000 needs at least 3 times the timeout which makes things
+     * slow in the beginning. */
+    cl_err = clSerialRead(pco->serial_ref, (char *) buffer, &size, pco->timeouts.command * 3);
     com_out = *((uint16_t*) buffer);
 
     uint16_t *b = (uint16_t *) buffer;
@@ -475,7 +474,10 @@ unsigned int pco_get_scan_mode(pco_handle pco, uint32_t *mode)
 
 static unsigned int pco_scan_and_set_baud_rate(pco_handle pco)
 {
-    static uint32_t baudrates[6][2] = { 
+    static uint32_t baudrates[9][2] = { 
+        { CL_BAUDRATE_921600, 921600},
+        { CL_BAUDRATE_460800, 460800 },
+        { CL_BAUDRATE_230400, 230400},
         { CL_BAUDRATE_115200, 115200 },
         { CL_BAUDRATE_57600, 57600 },
         { CL_BAUDRATE_38400, 38400 },
@@ -941,7 +943,7 @@ pco_handle pco_init(void)
             goto no_pco;
         }
     }
-    
+
     /* Reference the first port for easier access */
     pco->serial_ref = pco->serial_refs[0];
 
