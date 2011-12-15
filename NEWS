@@ -1,0 +1,34 @@
+
+Changes in libpco 0.2.0
+-----------------------
+
+- Use opaque pointers and cleanup exposure of external APIs.
+
+- Timeout for clSerialRead in pco_control_command() has been increased,
+  otherwise the pco.4000 could not be detected.
+
+- New symbols:
+    - pco_get_camera_type()
+    - pco_get_health_state()
+    - pco_reset()
+    - pco_get_temperature()
+    - pco_get_name()
+    - pco_get_resolution()
+    - pco_get_available_pixelrates()
+    - pco_get_pixelrate()
+    - pco_set_pixelrate()
+    - pco_get_available_conversion_factors()
+    - pco_set_trigger_mode()
+    - pco_get_trigger_mode()
+    - pco_force_trigger()
+    - pco_get_storage_mode()
+    - pco_get_acquire_mode()
+    - pco_set_acquire_mode()
+    - pco_get_num_images()
+    - pco_get_segment_sizes()
+    - pco_get_active_segment()
+    - pco_clear_active_segment()
+    - pco_get_bit_alignment()
+    - pco_set_bit_alignment()
+    - pco_request_image()
+    - pco_read_images()

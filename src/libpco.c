@@ -759,13 +759,11 @@ unsigned int pco_get_roi(pco_handle pco, uint16_t *window)
 {
     unsigned int err = PCO_NOERROR;
     SC2_ROI_Response resp;
-    /*if (pco_read_property(pco, GET_ROI, &resp, sizeof(resp)) == PCO_NOERROR) {*/
     pco_read_property(pco, GET_ROI, &resp, sizeof(resp));
         window[0] = resp.wROI_x0;
         window[1] = resp.wROI_y0;
         window[2] = resp.wROI_x1;
         window[3] = resp.wROI_y1;
-    /*}*/
     return err; 
 }
 
