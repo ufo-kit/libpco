@@ -1,4 +1,15 @@
 
+Changes in libpco 0.3.0 [NOT YET RELEASED]
+------------------------------------------
+
+- Thoroughly document API with Doxygen
+
+- Put work under LGPL 2.1
+
+- Removed symbols:
+    - pco_read_property()
+
+
 Changes in libpco 0.2.0
 -----------------------
 

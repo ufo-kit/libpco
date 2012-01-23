@@ -1,0 +1,13 @@
+LIBPCO INSTALLATION OVERVIEW
+
+Quick Start - Linux
+-------------------
+
+Install CMake, the SiliconSoftware microEnable IV driver and the microEnable IV
+Framegrabber runtime.
+
+   $ mkdir build
+   $ cd build
+   $ cmake PATH_TO_SOURCE
+   $ make
+   $ make install

@@ -1,0 +1,25 @@
+
+                                    libpco
+
+
+This directory contains the 0.2 release of libpco. libpco is a library to access
+CameraLink-based cameras from PCO.
+
+
+Latest Version
+--------------
+
+Details of the latest version can be found on the UFO project page under
+http://ufo.kit.edu. For changes see the file called NEWS.
+
+
+Installation
+------------
+
+Please see the file called INSTALL.
+
+
+Licensing
+---------
+
+Please see the file called LICENSE.
