@@ -489,6 +489,62 @@ unsigned int pco_get_temperature(pco_handle pco, uint32_t *ccd, uint32_t *camera
 }
 
 /**
+ * Read acceptable cooling range.
+ *
+ * @param pco A #pco_handle.
+ * @param default_temp Default cooling temperature.
+ * @param min_temp Minimum cooling temperature.
+ * @param max_temp Maximum cooling temperature.
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ * @see pco_set_cooling_temperature()
+ */
+unsigned int pco_get_cooling_range(pco_handle pco, int16_t *default_temp, int16_t *min_temp, int16_t *max_temp)
+{
+    *default_temp = pco->description.sDefaultCoolSetDESC;
+    *min_temp = pco->description.sMinCoolSetDESC;
+    *max_temp = pco->description.sMaxCoolSetDESC;
+    return PCO_NOERROR;
+}
+
+/**
+ * Set cooling temperature of the CCD sensor.
+ *
+ * @param pco A #pco_handle.
+ * @param temperature Target temperature of the CCD sensor.
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ * @note According to pco, this value should be set with a reserve of 5 degree
+ * Celsius: \f$\vartheta_\textrm{cool} = \vartheta_\textrm{ambient} -
+ * \Delta\vartheta_\textrm{max} + 5^\circ \mathrm{C}\f$.
+ * @see pco_get_cooling_range()
+ */
+unsigned int pco_set_cooling_temperature(pco_handle pco, int16_t temperature)
+{
+    SC2_Set_Cooling_Setpoint req = { .wCode = SET_COOLING_SETPOINT_TEMPERATURE,
+        .sTemp = temperature, .wSize = sizeof(req) };
+    SC2_Cooling_Setpoint_Response resp;
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+}
+
+/**
+ * Get cooling temperature.
+ * @param pco A #pco_handle.
+ * @param temperature Currently set target temperature of the CCD sensor.
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ * @see pco_get_cooling_range()
+ */
+unsigned int pco_get_cooling_temperature(pco_handle pco, int16_t *temperature)
+{
+    SC2_Cooling_Setpoint_Response resp;
+    unsigned int err = pco_read_property(pco, GET_CAMERA_NAME, &resp, sizeof(resp));
+    if (err == PCO_NOERROR)
+        *temperature = resp.sTemp; 
+    return err;
+}
+
+/**
  * Read the name of the camera.
  *
  * @param pco A #pco_handle.

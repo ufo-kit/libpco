@@ -52,6 +52,10 @@ unsigned int pco_get_pixelrate(pco_handle pco, uint32_t *rate);
 unsigned int pco_set_pixelrate(pco_handle pco, uint32_t rate);
 unsigned int pco_get_available_conversion_factors(pco_handle pco, uint16_t factors[4], int *num_rates);
 
+unsigned int pco_get_cooling_range(pco_handle pco, int16_t *default_temp, int16_t *min_temp, int16_t *max_temp);
+unsigned int pco_set_cooling_temperature(pco_handle pco, int16_t temperature);
+unsigned int pco_get_cooling_temperature(pco_handle pco, int16_t *temperature);
+
 unsigned int pco_set_scan_mode(pco_handle pco, uint32_t mode);
 unsigned int pco_get_scan_mode(pco_handle pco, uint32_t *mode);
 
