@@ -11,3 +11,6 @@ Framegrabber runtime.
    $ cmake PATH_TO_SOURCE
    $ make
    $ make install
+
+Disable the generation of the documentation by calling `ccmake
+PATH_TO_BUILD_DIR` and changing WITH_DOCUMENTATION from ON to OFF.
