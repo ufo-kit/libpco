@@ -211,7 +211,7 @@ int main(int argc, char const* argv[])
     CHECK_PCO(pco_set_timestamp_mode(pco, TIMESTAMP_MODE_BINARYANDASCII));
     CHECK_PCO(pco_set_timebase(pco, 1, 1));
 
-    uint16_t roi_window[4] = {1, 1, 1920, 1080};
+    uint16_t roi_window[4] = {1, 1, 2016, 2016};
     CHECK_PCO(pco_set_roi(pco, roi_window));
     CHECK_PCO(pco_get_roi(pco, roi_window));
     printf(" ROI: <%i,%i> to <%i,%i>\n", roi_window[0], roi_window[1], roi_window[2], roi_window[3]);
@@ -272,13 +272,13 @@ int main(int argc, char const* argv[])
     if (pco_get_num_images(pco, active_segment, &num_images) == PCO_NOERROR)
         printf(" Number of valid images: %i\n", num_images);
 
-    /* CHECK_PCO(pco_read_images(pco, active_segment, 1, 1)); */
+    CHECK_PCO(pco_read_images(pco, active_segment, 1, 1));
     CHECK_PCO(pco_request_image(pco));
     gettimeofday(&start, NULL);
     last_frame = Fg_getLastPicNumberBlockingEx(fg, n_images, port, n_images, mem);
     gettimeofday(&end, NULL);
     CHECK_ERROR_FG(fg, Fg_stopAcquireEx(fg, port, mem, STOP_ASYNC));
-    printf(" done. (last frame = %i)\n", (unsigned int) last_frame);
+    printf(" done. (last frame = %li)\n", last_frame);
 
     if (last_frame < 0) {
         printf(" Timed out\n");

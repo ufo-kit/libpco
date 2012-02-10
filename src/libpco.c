@@ -85,6 +85,8 @@ struct pco_t {
     PCO_SC2_TIMEOUTS timeouts;
     PCO_SC2_CL_TRANSFER_PARAM transfer;
     SC2_Camera_Description_Response description;
+    
+    size_t extra_timeout;
 };
 
 #define CHECK_ERR_CL(code) if ((code) != CL_OK) fprintf(stderr, "Error %i at %s:%i\n", (code), __FILE__, __LINE__);
@@ -317,6 +319,17 @@ static unsigned int pco_read_property(pco_handle pco, uint16_t code, void *dst, 
     return pco_control_command(pco, &req, sizeof(req), dst, size); 
 }
 
+static int pco_reset_serial(pco_handle pco)
+{
+    for (int i = 0; i < pco->num_ports; i++)
+        clSerialClose(pco->serial_refs[i]);
+
+    for (int i = 0; i < pco->num_ports; i++)
+        clSerialInit(i, &pco->serial_refs[i]);
+
+    pco->serial_ref = pco->serial_refs[0];
+    return 0;
+}
 
 /**
  * Send control data via CameraLink to camera. This function sends messages as
@@ -362,7 +375,10 @@ unsigned int pco_control_command(pco_handle pco,
 
     /* XXX: The pco.4000 needs at least 3 times the timeout which makes things
      * slow in the beginning. */
-    cl_err = clSerialRead(pco->serial_ref, (char *) buffer, &size, pco->timeouts.command * 3);
+    cl_err = clSerialRead(pco->serial_ref, (char *) buffer, &size, pco->timeouts.command * 3 + pco->extra_timeout);
+    if (cl_err < 0)
+        return PCO_ERROR_DRIVER_IOFAILURE | PCO_ERROR_DRIVER_CAMERALINK;
+    
     com_out = *((uint16_t*) buffer);
 
     uint16_t *b = (uint16_t *) buffer;
@@ -998,6 +1014,7 @@ unsigned int pco_set_timestamp_mode(pco_handle pco, uint16_t mode)
  */
 unsigned int pco_set_timebase(pco_handle pco, uint16_t delay, uint16_t exposure)
 {
+   unsigned int err;
    SC2_Set_Timebase com;
    SC2_Timebase_Response resp;
 
@@ -1005,7 +1022,9 @@ unsigned int pco_set_timebase(pco_handle pco, uint16_t delay, uint16_t exposure)
    com.wSize = sizeof(SC2_Set_Timebase);
    com.wTimebaseDelay = delay;
    com.wTimebaseExposure = exposure;
-   return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
+   err = pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
+   pco_reset_serial(pco);
+   return err;
 }
 
 /**
@@ -1120,12 +1139,16 @@ unsigned int pco_set_hotpixel_correction(pco_handle pco, uint32_t mode)
  */
 unsigned int pco_arm_camera(pco_handle pco)
 {
+    unsigned int err;
     SC2_Simple_Telegram req;
     SC2_Arm_Camera_Response resp;
 
     req.wCode = ARM_CAMERA;
     req.wSize = sizeof(SC2_Simple_Telegram);
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    pco->extra_timeout = 5000;
+    err = pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    pco->extra_timeout = 0;
+    return err;
 }
 
 /**
@@ -1326,6 +1349,8 @@ pco_handle pco_init(void)
     if (pco == NULL)
         return NULL;
 
+    memset(pco, 0, sizeof(pco));
+    
     pco->timeouts.command = PCO_SC2_COMMAND_TIMEOUT;
     pco->timeouts.image = PCO_SC2_IMAGE_TIMEOUT_L;
     pco->timeouts.transfer = PCO_SC2_COMMAND_TIMEOUT;

@@ -6,6 +6,8 @@ Changes in libpco 0.3.0 [NOT YET RELEASED]
 
 - Put work under LGPL 2.1
 
+- Fix operation under openSUSE 12.1
+
 - New symbols:
     - pco_get_cooling_range()
     - pco_set_cooling_temperature()
