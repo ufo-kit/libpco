@@ -1078,16 +1078,14 @@ unsigned int pco_get_delay_exposure(pco_handle pco, uint32_t *delay, uint32_t *e
  */
 unsigned int pco_set_roi(pco_handle pco, uint16_t *window)
 {
-    SC2_Set_ROI com;
+    SC2_Set_ROI req = {
+        .wCode = SET_ROI, .wSize = sizeof(req),
+        .wROI_x0 = window[0], .wROI_y0 = window[1],
+        .wROI_x1 = window[2], .wROI_y1 = window[3]
+    };
     SC2_ROI_Response resp;
 
-    com.wCode = SET_ROI;
-    com.wSize = sizeof(com);
-    com.wROI_x0 = window[0];
-    com.wROI_y0 = window[1];
-    com.wROI_x1 = window[2];
-    com.wROI_y1 = window[3];
-    return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 /**
@@ -1101,11 +1099,14 @@ unsigned int pco_get_roi(pco_handle pco, uint16_t *window)
 {
     unsigned int err = PCO_NOERROR;
     SC2_ROI_Response resp;
-    pco_read_property(pco, GET_ROI, &resp, sizeof(resp));
+    err = pco_read_property(pco, GET_ROI, &resp, sizeof(resp));
+
+    if (err == PCO_NOERROR) {
         window[0] = resp.wROI_x0;
         window[1] = resp.wROI_y0;
         window[2] = resp.wROI_x1;
         window[3] = resp.wROI_y1;
+    }
     return err; 
 }
 

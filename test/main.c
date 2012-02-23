@@ -12,10 +12,10 @@
 
 #include "clser.h"
 
-#define CHECK_ERROR_FG(fg, code) if ((code) != FG_OK) \
-    fprintf(stderr, "Error at line %i: %i\n", __LINE__, Fg_getLastErrorNumber((fg)));
+#define CHECK_FG(fg, code) if ((code) != FG_OK) \
+    fprintf(stderr, "FG-error at %s:%i: %i\n", __FILE__, __LINE__, Fg_getLastErrorNumber((fg)));
 
-#define CHECK_PCO(err) if ((err) != PCO_NOERROR) fprintf(stderr, "error at %s:%i\n", __FILE__, __LINE__);
+#define CHECK_PCO(err) if ((err) != PCO_NOERROR) fprintf(stderr, "PCO-error at %s:%i\n", __FILE__, __LINE__);
 
 struct Fg_Params {
     int parameter;
@@ -66,7 +66,7 @@ void print_parameters(Fg_Struct *fg, unsigned int dma_index)
     int value, ret; 
     for (int i = 0; params[i].desc != NULL; i++) {
         ret = Fg_getParameter(fg, params[i].parameter, &value, dma_index);
-        CHECK_ERROR_FG(fg, ret);
+        CHECK_FG(fg, ret);
         printf(" %s: %i\n", params[i].desc, value);
     }
 }
@@ -211,37 +211,36 @@ int main(int argc, char const* argv[])
     CHECK_PCO(pco_set_timestamp_mode(pco, TIMESTAMP_MODE_BINARYANDASCII));
     CHECK_PCO(pco_set_timebase(pco, 1, 1));
 
-    uint16_t roi_window[4] = {1, 1, 2016, 2016};
+    uint16_t width_std, height_std, width_ex, height_ex;
+    CHECK_PCO(pco_get_resolution(pco, &width_std, &height_std, &width_ex, &height_ex));
+
+    uint16_t roi_window[4] = {1, 1, width_std, height_std};
     CHECK_PCO(pco_set_roi(pco, roi_window));
     CHECK_PCO(pco_get_roi(pco, roi_window));
     printf(" ROI: <%i,%i> to <%i,%i>\n", roi_window[0], roi_window[1], roi_window[2], roi_window[3]);
+    printf(" Dimensions: %ix%i\n", width_std, height_std);
 
-    uint32_t width = roi_window[2]-roi_window[0] + 1;
-    uint32_t height = roi_window[3]-roi_window[1] + 1;
+    uint32_t width = width_std, height = height_std;
 
     CHECK_PCO(pco_arm_camera(pco));
 
-    if (pco_get_actual_size(pco, &width, &height) == PCO_NOERROR) {
-        printf(" Dimensions: %ix%i\n", width, height);
-    }
-
     /* Frame grabber specific */
-    static const char *applet = "libDualAreaGray16.so";
+    static const char *applet = "libFullAreaGray8.so";
     int port = PORT_A;
     Fg_Struct *fg = Fg_Init(applet, 0);
 
     int val = FG_CL_SINGLETAP_16_BIT;
-    CHECK_ERROR_FG(fg, Fg_setParameter(fg, FG_CAMERA_LINK_CAMTYP, &val, port));
+    CHECK_FG(fg, Fg_setParameter(fg, FG_CAMERA_LINK_CAMTYP, &val, port));
 
     val = FG_GRAY16;
-    CHECK_ERROR_FG(fg, Fg_setParameter(fg, FG_FORMAT, &val, port));
+    CHECK_FG(fg, Fg_setParameter(fg, FG_FORMAT, &val, port));
 
     val = FREE_RUN;
-    CHECK_ERROR_FG(fg, Fg_setParameter(fg, FG_TRIGGERMODE, &val, port));
+    CHECK_FG(fg, Fg_setParameter(fg, FG_TRIGGERMODE, &val, port));
 
     /* width *= 2; */
-    CHECK_ERROR_FG(fg, Fg_setParameter(fg, FG_WIDTH, &width, port));
-    CHECK_ERROR_FG(fg, Fg_setParameter(fg, FG_HEIGHT, &height, port));
+    CHECK_FG(fg, Fg_setParameter(fg, FG_WIDTH, &width, port));
+    CHECK_FG(fg, Fg_setParameter(fg, FG_HEIGHT, &height, port));
     /* width /= 2; */
 
     printf("\n--- Port A -------------\n");
@@ -263,7 +262,7 @@ int main(int argc, char const* argv[])
     fflush(stdout);
 
     CHECK_PCO(pco_set_rec_state(pco, 1));
-    CHECK_ERROR_FG(fg, Fg_AcquireEx(fg, port, n_images, ACQ_STANDARD, mem));
+    CHECK_FG(fg, Fg_AcquireEx(fg, port, n_images, ACQ_STANDARD, mem));
 
     frameindex_t last_frame = 1;
     struct timeval start, end;
@@ -277,7 +276,7 @@ int main(int argc, char const* argv[])
     gettimeofday(&start, NULL);
     last_frame = Fg_getLastPicNumberBlockingEx(fg, n_images, port, n_images, mem);
     gettimeofday(&end, NULL);
-    CHECK_ERROR_FG(fg, Fg_stopAcquireEx(fg, port, mem, STOP_ASYNC));
+    CHECK_FG(fg, Fg_stopAcquireEx(fg, port, mem, STOP_ASYNC));
     printf(" done. (last frame = %li)\n", last_frame);
 
     if (last_frame < 0) {
@@ -308,7 +307,7 @@ int main(int argc, char const* argv[])
         printf(" Number of valid images: %i\n", num_images);
 
     /* Close CameraLink interfaces and frame grabber */
-    CHECK_ERROR_FG(fg, Fg_FreeMemEx(fg, mem));
+    CHECK_FG(fg, Fg_FreeMemEx(fg, mem));
     Fg_FreeGrabber(fg);
 
     pco_destroy(pco);
