@@ -1354,6 +1354,7 @@ pco_handle pco_init(void)
     pco->timeouts.command = PCO_SC2_COMMAND_TIMEOUT;
     pco->timeouts.image = PCO_SC2_IMAGE_TIMEOUT_L;
     pco->timeouts.transfer = PCO_SC2_COMMAND_TIMEOUT;
+    pco->extra_timeout = 0;
 
     for (int i = 0; i < 4; i++)
         pco->serial_refs[i] = NULL;
