@@ -375,7 +375,7 @@ unsigned int pco_control_command(pco_handle pco,
 
     /* XXX: The pco.4000 needs at least 3 times the timeout which makes things
      * slow in the beginning. */
-    cl_err = clSerialRead(pco->serial_ref, (char *) buffer, &size, pco->timeouts.command * 3 + pco->extra_timeout);
+    cl_err = clSerialRead(pco->serial_ref, (char *) buffer, &size, pco->timeouts.command * 6 + pco->extra_timeout);
     if (cl_err < 0)
         return PCO_ERROR_DRIVER_IOFAILURE | PCO_ERROR_DRIVER_CAMERALINK;
     
@@ -442,6 +442,34 @@ unsigned int pco_get_camera_type(pco_handle pco, uint16_t *type, uint16_t *subty
     if (err == PCO_NOERROR) {
         *type = resp.wCamType;
         *subtype = resp.wCamSubType;
+    }
+    return err;
+}
+
+/**
+ * Read camera version information.
+ *
+ * @param pco A #pco_handle
+ * @param serial_number Serial number
+ * @param hw_major Hardware major version
+ * @param hw_minor Hardware minor version
+ * @param fw_major Firmware major version
+ * @param fw_minor Firmware minor version
+ * @return Error code or PCO_NOERROR.
+ * @since 0.2
+ */
+unsigned int pco_get_camera_version(pco_handle pco, uint32_t *serial_number, 
+        uint16_t *hw_major, uint16_t *hw_minor, uint16_t *fw_major, uint16_t *fw_minor)
+{
+    SC2_Camera_Type_Response resp;
+    unsigned int err = pco_read_property(pco, GET_CAMERA_TYPE, &resp, sizeof(resp));
+
+    if (err == PCO_NOERROR) {
+        *serial_number = resp.dwSerialNumber;
+        *hw_major = resp.dwHWVersion >> 16;
+        *hw_minor = resp.dwHWVersion & 0xFFFF;
+        *fw_major = resp.dwFWVersion >> 16;
+        *fw_minor = resp.dwFWVersion & 0xFFFF;
     }
     return err;
 }

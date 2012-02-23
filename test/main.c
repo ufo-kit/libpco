@@ -68,6 +68,8 @@ void print_parameters(Fg_Struct *fg, unsigned int dma_index)
         ret = Fg_getParameter(fg, params[i].parameter, &value, dma_index);
         CHECK_FG(fg, ret);
         printf(" %s: %i\n", params[i].desc, value);
+        if ((i == 0) && (value == 0))
+            break;
     }
 }
 
@@ -109,6 +111,15 @@ int main(int argc, char const* argv[])
     if (pco_get_name(pco, &name) == PCO_NOERROR) {
         printf("\n Camera name: %s\n", name);
         free(name);
+    }
+
+    uint32_t serial_number;
+    uint16_t hw_major, hw_minor, fw_major, fw_minor;
+
+    if (pco_get_camera_version(pco, &serial_number, &hw_major, &hw_minor, &fw_major, &fw_minor) == PCO_NOERROR) {
+        printf(" Serial number: %i\n", serial_number); 
+        printf(" Hardware version: %i.%i\n", hw_major, hw_minor);
+        printf(" Firmware version: %i.%i\n\n", fw_major, fw_minor);
     }
 
     uint32_t scan_mode = 0xFFFF;

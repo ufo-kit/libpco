@@ -12,6 +12,7 @@ Changes in libpco 0.3.0 [NOT YET RELEASED]
     - pco_get_cooling_range()
     - pco_set_cooling_temperature()
     - pco_get_cooling_temperature()
+    - pco_get_camera_version()
 
 - Removed symbols:
     - pco_read_property()
