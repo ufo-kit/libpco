@@ -206,17 +206,17 @@ int main(int argc, char const* argv[])
     }
 
     size_t sizes[4];
-    if (pco_get_segment_sizes(pco, sizes) == PCO_NOERROR)
-        printf(" Segment sizes: %i, %i, %i, %i pages\n", (int) sizes[0], (int) sizes[1], (int) sizes[2], (int) sizes[3]);
+    CHECK_PCO(pco_get_segment_sizes(pco, sizes));
+    printf(" Segment sizes: %i, %i, %i, %i pages\n", (int) sizes[0], (int) sizes[1], (int) sizes[2], (int) sizes[3]);
 
     uint16_t active_segment;
-    if (pco_get_active_segment(pco, &active_segment) == PCO_NOERROR)
-        printf(" Active segment: %i\n", active_segment);
+    CHECK_PCO(pco_get_active_segment(pco, &active_segment));
+    printf(" Active segment: %i\n", active_segment);
 
     CHECK_PCO(pco_clear_active_segment(pco));
     uint32_t num_images = 0;
-    if (pco_get_num_images(pco, active_segment, &num_images) == PCO_NOERROR)
-        printf(" Number of valid images: %i\n", num_images);
+    CHECK_PCO(pco_get_num_images(pco, active_segment, &num_images));
+    printf(" Number of valid images: %i\n", num_images);
 
     /* Setup for recording */
     CHECK_PCO(pco_set_timestamp_mode(pco, TIMESTAMP_MODE_BINARYANDASCII));
@@ -240,19 +240,30 @@ int main(int argc, char const* argv[])
     int port = PORT_A;
     Fg_Struct *fg = Fg_Init(applet, 0);
 
-    int val = FG_CL_SINGLETAP_16_BIT;
+    /* This must be set for each camera type:
+     *  - edge: FG_CL_8BIT_FULL_10
+     *  - 4000: FC_CL_SINGLETAP_16_BIT
+     *  - dimax: FG_CL_SINGLETAP_8BIT
+     */
+    int val = FG_CL_8BIT_FULL_10;
     CHECK_FG(fg, Fg_setParameter(fg, FG_CAMERA_LINK_CAMTYP, &val, port));
 
-    val = FG_GRAY16;
+    /* This must be set for each camera type:
+     *  - edge: FG_GRAY
+     *  - 4000: FG_GRAY16
+     *  - dimax: FG_GRAY16 or FG_GRAY
+     */
+    val = FG_GRAY;
     CHECK_FG(fg, Fg_setParameter(fg, FG_FORMAT, &val, port));
 
     val = FREE_RUN;
     CHECK_FG(fg, Fg_setParameter(fg, FG_TRIGGERMODE, &val, port));
 
-    /* width *= 2; */
+    /* We need to adjust this for the edge */
+    width *= 2;
     CHECK_FG(fg, Fg_setParameter(fg, FG_WIDTH, &width, port));
     CHECK_FG(fg, Fg_setParameter(fg, FG_HEIGHT, &height, port));
-    /* width /= 2; */
+    width /= 2;
 
     printf("\n--- Port A -------------\n");
     print_parameters(fg, port);
@@ -278,7 +289,7 @@ int main(int argc, char const* argv[])
     frameindex_t last_frame = 1;
     struct timeval start, end;
 
-    sleep(3);
+    sleep(1);
     if (pco_get_num_images(pco, active_segment, &num_images) == PCO_NOERROR)
         printf(" Number of valid images: %i\n", num_images);
 
@@ -304,11 +315,12 @@ int main(int argc, char const* argv[])
 
         uint16_t *frame = (uint16_t *) Fg_getImagePtrEx(fg, last_frame, port, mem);
         
-        /* uint16_t *image = (uint16_t *) malloc(width*height*2); */
-        /* pco->reorder_image(image, frame, width, height); */
+        uint16_t *image = (uint16_t *) malloc(width*height*2);
+        printf("reorder func: %p\n", pco_get_reorder_func(pco));
+        pco_get_reorder_func(pco)(image, frame, width, height);
 
         FILE *fp = fopen("out.raw", "wb");
-        fwrite(frame, width*height*2, 1, fp);
+        fwrite(image, width*height*2, 1, fp);
         fclose(fp);
         /* free(image); */
     }

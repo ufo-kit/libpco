@@ -375,7 +375,7 @@ unsigned int pco_control_command(pco_handle pco,
 
     /* XXX: The pco.4000 needs at least 3 times the timeout which makes things
      * slow in the beginning. */
-    cl_err = clSerialRead(pco->serial_ref, (char *) buffer, &size, pco->timeouts.command * 6 + pco->extra_timeout);
+    cl_err = clSerialRead(pco->serial_ref, (char *) buffer, &size, pco->timeouts.command * 3 + pco->extra_timeout);
     if (cl_err < 0)
         return PCO_ERROR_DRIVER_IOFAILURE | PCO_ERROR_DRIVER_CAMERALINK;
     
@@ -1380,6 +1380,7 @@ pco_handle pco_init(void)
 
     memset(pco, 0, sizeof(pco));
     
+    pco->reorder_image = &pco_reorder_image_5x16;
     pco->timeouts.command = PCO_SC2_COMMAND_TIMEOUT;
     pco->timeouts.image = PCO_SC2_IMAGE_TIMEOUT_L;
     pco->timeouts.transfer = PCO_SC2_COMMAND_TIMEOUT;
