@@ -24,6 +24,24 @@
  * CameraLink-based cameras produced by PCO. However, actual frame transfer is
  * still managed by the frame grabber.
  *
+ * \section intro_installation Installation
+ *
+ * Check out a current branch from the repository or untar a release tarball
+ * into some directory. Create a new empty directory and issue 
+ * \code cmake <path-to-libpco>
+ * \endcode
+ * in a terminal. In order to change the installation prefix or library suffix
+ * on 64-bit systems, you can call cmake with
+ * -DCMAKE_INSTALL_PREFIX=/some/other/path and -DLIB_SUFFIX=64. Build and
+ * install the library with
+ * \code
+ * make && make install
+ * \endcode
+ * pkg-config meta information is also installed and can be queried with
+ * \code
+ * pkg-config --cflags --libs pco
+ * \endcode
+ *
  * \section intro_quickstart Quick Start
  *
  * Make sure to connect the camera and the frame grabber with the CameraLink
