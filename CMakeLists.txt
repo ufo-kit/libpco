@@ -30,6 +30,7 @@ add_definitions("--std=c99 -Wall -fpack-struct")
 
 # --- Build library and install ---------------------------------------------
 add_library(pco SHARED src/libpco.c)
+set(LIB_INSTALL_DIR "lib${LIB_SUFFIX}")
 
 set_target_properties(pco PROPERTIES
       VERSION ${LIBPCO_ABI_VERSION}
@@ -39,7 +40,7 @@ configure_file(${CMAKE_SOURCE_DIR}/src/config.h.in
     ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 install(TARGETS pco
-    LIBRARY DESTINATION lib${LIB_SUFFIX})
+    LIBRARY DESTINATION ${LIB_INSTALL_DIR})
 
 install(FILES
     src/libpco.h 
@@ -89,3 +90,14 @@ if (FGLIB5_FOUND)
     add_executable(diagnose test/main.c)
     target_link_libraries(diagnose pco ${FGLIB5_LIBRARY} ${CLSERME4_LIBRARY})
 endif()
+
+# --- pkg-config --------------------------------------------------------------
+set(PCO_PKG_PREFIX ${CMAKE_INSTALL_PREFIX})
+set(PCO_PKG_EXEC_PREFIX "${PCO_PKG_PREFIX}/bin")
+set(PCO_PKG_LIBDIR "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
+set(PCO_PKG_INCLUDEDIR "${PCO_PKG_PREFIX}/include")
+
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/pco.pc.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/pco.pc" @ONLY IMMEDIATE)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/pco.pc DESTINATION ${LIB_INSTALL_DIR}/pkgconfig)
