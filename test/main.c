@@ -231,7 +231,7 @@ int main(int argc, char const* argv[])
     printf(" ROI: <%i,%i> to <%i,%i>\n", roi_window[0], roi_window[1], roi_window[2], roi_window[3]);
     printf(" Dimensions: %ix%i\n", width_std, height_std);
 
-    CHECK_PCO(pco_get_possible_binning(pco, NULL, NULL, NULL, NULL));
+    CHECK_PCO(pco_get_possible_binnings(pco, NULL, NULL, NULL, NULL));
 
     uint32_t width = width_std, height = height_std;
 
