@@ -711,7 +711,7 @@ unsigned int pco_get_available_pixelrates(pco_handle pco, uint32_t rates[4], int
  * Set ADC read out mode.
  *
  * @param pco A #pco_handle.
- * @param operation Operational mode of the ADCs
+ * @param mode Operational mode of the ADCs
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
@@ -729,7 +729,7 @@ unsigned int pco_set_adc_mode(pco_handle pco, pco_adc_mode mode)
  * Get ADC read out mode.
  *
  * @param pco A #pco_handle.
- * @param operation Location for the operational mode of the ADCs
+ * @param mode Location for the operational mode of the ADCs
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
@@ -1284,10 +1284,15 @@ unsigned int pco_get_binning(pco_handle pco, uint16_t *horizontal, uint16_t *ver
  * @param pco A #pco_handle.
  * @param horizontal Location to store horizontal binning information. The
  *      pointer should be initialized with NULL.
- * @param num_horizontal Number of elements in horizontal
+ * @param num_horizontal Location for the number of elements in #horizontal
  * @param vertical Location to store vertical binning information. The pointer
  *      should be initialized with NULL.
+ * @param num_vertical Location for the number of elements in #vertical
  * @return Error code or PCO_NOERROR.
+ *
+ * @note Both horizontal and vertical should point to NULL because memory for the
+ * data is allocated by this function. This memory must be freed by the caller.
+ *
  * @since 0.3
  */
 unsigned int pco_get_possible_binnings(pco_handle pco, 
