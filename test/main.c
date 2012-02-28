@@ -231,7 +231,19 @@ int main(int argc, char const* argv[])
     printf(" ROI: <%i,%i> to <%i,%i>\n", roi_window[0], roi_window[1], roi_window[2], roi_window[3]);
     printf(" Dimensions: %ix%i\n", width_std, height_std);
 
-    CHECK_PCO(pco_get_possible_binnings(pco, NULL, NULL, NULL, NULL));
+    unsigned int num_horizontal, num_vertical;
+    uint16_t *horizontal_binnings = NULL, *vertical_binnings = NULL;
+    CHECK_PCO(pco_get_possible_binnings(pco, &horizontal_binnings, &num_horizontal, &vertical_binnings, &num_vertical));
+    printf(" Horizontal Binnings: ");
+    for (int i = 0; i < num_horizontal; i++)
+        printf("%i ", horizontal_binnings[i]);
+    printf("\n Vertical Binnings: ");
+    for (int i = 0; i < num_vertical; i++)
+        printf("%i ", vertical_binnings[i]);
+    printf("\n");
+
+    free(horizontal_binnings);
+    free(vertical_binnings);
 
     uint32_t width = width_std, height = height_std;
 

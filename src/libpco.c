@@ -270,6 +270,33 @@ static void pco_msleep(int time)
     ret = select(0, NULL, NULL, NULL, &tv);
 }
 
+static uint16_t pco_msb_pos(uint16_t x)
+{
+    uint16_t val = 0;
+    while (x >>= 1) 
+        ++val;
+    return val;
+}
+
+static void pco_fill_binning_array(uint16_t *a, unsigned int n, int is_linear)
+{
+    if (is_linear)
+        for (int i = 1; i < n + 1; i++)
+            a[i] = i;
+    else  {
+        for (int i = 0, j = 1; i < n; i++, j *= 2)
+            a[i] = j;
+    }
+}
+
+static unsigned int pco_get_num_binnings(uint16_t max_binning, int is_linear)
+{
+    /* In the linear case, we have 1 to max(bin) binnings, otherwise
+     * this is log_2(max(bin)) + 1. */
+    return is_linear ? max_binning : pco_msb_pos(max_binning) + 1;
+}
+
+
 static unsigned int pco_set_cl_config(pco_handle pco)
 {
     SC2_Set_CL_Configuration cl_com;
@@ -1299,7 +1326,19 @@ unsigned int pco_get_possible_binnings(pco_handle pco,
         uint16_t **horizontal, unsigned int *num_horizontal,
         uint16_t **vertical, unsigned int *num_vertical)
 {
-    /* TODO: implement */
+    unsigned int num_h = pco_get_num_binnings(pco->description.wMaxBinHorzDESC, pco->description.wBinHorzSteppingDESC); 
+    uint16_t *r_horizontal = (uint16_t *) malloc(num_h * sizeof(uint16_t));
+    pco_fill_binning_array(r_horizontal, num_h, pco->description.wBinHorzSteppingDESC);
+
+    unsigned int num_v = pco_get_num_binnings(pco->description.wMaxBinVertDESC, pco->description.wBinVertSteppingDESC); 
+    uint16_t *r_vertical = (uint16_t *) malloc(num_v * sizeof(uint16_t));
+    pco_fill_binning_array(r_vertical, num_v, pco->description.wBinVertSteppingDESC);
+
+    *horizontal = r_horizontal;
+    *vertical = r_vertical;
+    *num_horizontal = num_h;
+    *num_vertical = num_v;
+
     return PCO_NOERROR;
 }
 
