@@ -233,10 +233,12 @@ int main(int argc, char const* argv[])
 
     uint32_t width = width_std, height = height_std;
 
-    CHECK_PCO(pco_arm_camera(pco));
-
-    /* Frame grabber specific */
-    static const char *applet = "libFullAreaGray8.so";
+    /* Frame grabber specific
+     *  - edge: libFullAreaGray8
+     *  - 4000: libDualAreaGray16
+     *  - dimax: libFullAreaGray16
+     */
+    static const char *applet = "libDualAreaGray16.so";
     int port = PORT_A;
     Fg_Struct *fg = Fg_Init(applet, 0);
 
@@ -245,7 +247,7 @@ int main(int argc, char const* argv[])
      *  - 4000: FC_CL_SINGLETAP_16_BIT
      *  - dimax: FG_CL_SINGLETAP_8BIT
      */
-    int val = FG_CL_8BIT_FULL_10;
+    int val = FG_CL_SINGLETAP_16_BIT;
     CHECK_FG(fg, Fg_setParameter(fg, FG_CAMERA_LINK_CAMTYP, &val, port));
 
     /* This must be set for each camera type:
@@ -253,17 +255,17 @@ int main(int argc, char const* argv[])
      *  - 4000: FG_GRAY16
      *  - dimax: FG_GRAY16 or FG_GRAY
      */
-    val = FG_GRAY;
+    val = FG_GRAY16;
     CHECK_FG(fg, Fg_setParameter(fg, FG_FORMAT, &val, port));
 
     val = FREE_RUN;
     CHECK_FG(fg, Fg_setParameter(fg, FG_TRIGGERMODE, &val, port));
 
     /* We need to adjust this for the edge */
-    width *= 2;
+    /* width *= 2; */
     CHECK_FG(fg, Fg_setParameter(fg, FG_WIDTH, &width, port));
     CHECK_FG(fg, Fg_setParameter(fg, FG_HEIGHT, &height, port));
-    width /= 2;
+    /* width /= 2; */
 
     printf("\n--- Port A -------------\n");
     print_parameters(fg, port);
@@ -283,13 +285,14 @@ int main(int argc, char const* argv[])
     printf(" Acquire %d image(s)...", n_images);
     fflush(stdout);
 
+    CHECK_PCO(pco_arm_camera(pco));
     CHECK_PCO(pco_set_rec_state(pco, 1));
     CHECK_FG(fg, Fg_AcquireEx(fg, port, n_images, ACQ_STANDARD, mem));
 
     frameindex_t last_frame = 1;
     struct timeval start, end;
 
-    sleep(1);
+    sleep(3);
     if (pco_get_num_images(pco, active_segment, &num_images) == PCO_NOERROR)
         printf(" Number of valid images: %i\n", num_images);
 
@@ -315,14 +318,12 @@ int main(int argc, char const* argv[])
 
         uint16_t *frame = (uint16_t *) Fg_getImagePtrEx(fg, last_frame, port, mem);
         
-        uint16_t *image = (uint16_t *) malloc(width*height*2);
-        printf("reorder func: %p\n", pco_get_reorder_func(pco));
-        pco_get_reorder_func(pco)(image, frame, width, height);
+        /* uint16_t *image = (uint16_t *) malloc(width*height*2); */
+        /* pco_get_reorder_func(pco)(image, frame, width, height); */
 
         FILE *fp = fopen("out.raw", "wb");
-        fwrite(image, width*height*2, 1, fp);
+        fwrite(frame, width*height*2, 1, fp);
         fclose(fp);
-        /* free(image); */
     }
 
     CHECK_PCO(pco_set_rec_state(pco, 0));

@@ -1039,20 +1039,25 @@ unsigned int pco_set_timestamp_mode(pco_handle pco, uint16_t mode)
  * @param delay Scale of delay.
  * @param exposure Scale of exposure.
  * @return Error code or PCO_NOERROR.
+ *
+ * @warning Using this function is strongly disadvised. Using the pco.dimax we
+ * have to reset the serial connection otherwise subsequent commands will block.
+ * However, resetting the serial connection breaks subsequent commands on the
+ * pco.4000 ...
  */
 unsigned int pco_set_timebase(pco_handle pco, uint16_t delay, uint16_t exposure)
 {
-   unsigned int err;
-   SC2_Set_Timebase com;
-   SC2_Timebase_Response resp;
+    unsigned int err;
+    SC2_Set_Timebase com;
+    SC2_Timebase_Response resp;
 
-   com.wCode = SET_TIMEBASE;
-   com.wSize = sizeof(SC2_Set_Timebase);
-   com.wTimebaseDelay = delay;
-   com.wTimebaseExposure = exposure;
-   err = pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
-   pco_reset_serial(pco);
-   return err;
+    com.wCode = SET_TIMEBASE;
+    com.wSize = sizeof(SC2_Set_Timebase);
+    com.wTimebaseDelay = delay;
+    com.wTimebaseExposure = exposure;
+    err = pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
+    /* pco_reset_serial(pco); */
+    return err;
 }
 
 /**
@@ -1066,14 +1071,14 @@ unsigned int pco_set_timebase(pco_handle pco, uint16_t delay, uint16_t exposure)
  */
 unsigned int pco_set_delay_exposure(pco_handle pco, uint32_t delay, uint32_t exposure)
 {
-   SC2_Set_Delay_Exposure com;
-   SC2_Delay_Exposure_Response resp;
+    SC2_Set_Delay_Exposure com;
+    SC2_Delay_Exposure_Response resp;
 
-   com.wCode = SET_DELAY_EXPOSURE_TIME;
-   com.wSize = sizeof(SC2_Set_Delay_Exposure);
-   com.dwDelay = delay;
-   com.dwExposure = exposure;
-   return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
+    com.wCode = SET_DELAY_EXPOSURE_TIME;
+    com.wSize = sizeof(SC2_Set_Delay_Exposure);
+    com.dwDelay = delay;
+    com.dwExposure = exposure;
+    return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
 }
 
 /**
@@ -1087,13 +1092,13 @@ unsigned int pco_set_delay_exposure(pco_handle pco, uint32_t delay, uint32_t exp
  */
 unsigned int pco_get_delay_exposure(pco_handle pco, uint32_t *delay, uint32_t *exposure)
 {
-   unsigned int err = PCO_NOERROR;
-   SC2_Delay_Exposure_Response resp;
-   if (pco_read_property(pco, GET_DELAY_EXPOSURE_TIME, &resp, sizeof(resp)) == PCO_NOERROR) {
-       *delay = resp.dwDelay;
-       *exposure = resp.dwExposure;
-   }
-   return err;
+    unsigned int err = PCO_NOERROR;
+    SC2_Delay_Exposure_Response resp;
+    if (pco_read_property(pco, GET_DELAY_EXPOSURE_TIME, &resp, sizeof(resp)) == PCO_NOERROR) {
+        *delay = resp.dwDelay;
+        *exposure = resp.dwExposure;
+    }
+    return err;
 }
 
 /**
