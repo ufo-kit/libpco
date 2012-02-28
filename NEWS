@@ -13,8 +13,16 @@ Changes in libpco 0.3.0 [NOT YET RELEASED]
     - pco_set_cooling_temperature()
     - pco_get_cooling_temperature()
     - pco_get_camera_version()
+    - pco_set_binning()
+    - pco_get_binning()
+    - pco_get_possible_binnings()
+    - pco_set_adc_mode()
+    - pco_get_adc_mode()
 
-- Removed symbols:
+- New types:
+    - pco_adc_mode enum
+
+- Removed symbols from public API:
     - pco_read_property()
 
 

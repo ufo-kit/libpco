@@ -652,6 +652,41 @@ unsigned int pco_get_available_pixelrates(pco_handle pco, uint32_t rates[4], int
 }
 
 /**
+ * Set ADC read out mode.
+ *
+ * @param pco A #pco_handle.
+ * @param operation Operational mode of the ADCs
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ */
+unsigned int pco_set_adc_mode(pco_handle pco, pco_adc_mode mode)
+{
+    SC2_Set_ADC_Operation req = {
+        .wCode = GET_ADC_OPERATION, .wSize = sizeof(req),
+        .wMode = (uint16_t) mode
+    };
+    SC2_ADC_Operation_Response resp;
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+}
+
+/**
+ * Get ADC read out mode.
+ *
+ * @param pco A #pco_handle.
+ * @param operation Location for the operational mode of the ADCs
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ */
+unsigned int pco_get_adc_mode(pco_handle pco, pco_adc_mode *mode)
+{
+    SC2_ADC_Operation_Response resp;
+    unsigned int err = pco_read_property(pco, GET_ADC_OPERATION, &resp, sizeof(resp));
+    if (err == PCO_NOERROR)
+        *mode = resp.wMode;
+    return err;
+}
+
+/**
  * Read current pixel rate.
  * @param pco A #pco_handle.
  * @param rate Current pixel rate.
@@ -1056,7 +1091,7 @@ unsigned int pco_set_timebase(pco_handle pco, uint16_t delay, uint16_t exposure)
     com.wTimebaseDelay = delay;
     com.wTimebaseExposure = exposure;
     err = pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
-    /* pco_reset_serial(pco); */
+    pco_reset_serial(pco);
     return err;
 }
 
@@ -1141,6 +1176,70 @@ unsigned int pco_get_roi(pco_handle pco, uint16_t *window)
         window[3] = resp.wROI_y1;
     }
     return err; 
+}
+
+/**
+ * Set binning.
+ *
+ * @param pco A #pco_handle.
+ * @param horizontal Horizontal binning
+ * @param vertical Vertical binning
+ * @return Error code or PCO_NOERROR.
+ *
+ * Possible values for #horizontal and #vertical can be queried with
+ * pco_get_possible_binning().
+ *
+ * @since 0.3
+ */
+unsigned int pco_set_binning(pco_handle pco, uint16_t horizontal, uint16_t vertical)
+{
+    SC2_Set_Binning req = {
+        .wCode = SET_BINNING, .wSize = sizeof(req),
+        .wBinningx = horizontal, .wBinningy = vertical
+    };
+    SC2_Binning_Response resp;
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+}
+
+/**
+ * Get binning.
+ *
+ * @param pco A #pco_handle.
+ * @param horizontal Location to store horizontal binning information
+ * @param vertical Location to store vertical binning information
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ */
+unsigned int pco_get_binning(pco_handle pco, uint16_t *horizontal, uint16_t *vertical)
+{
+    SC2_Binning_Response resp;
+    unsigned int err = pco_read_property(pco, GET_BINNING, &resp, sizeof(resp));
+
+    if (err == PCO_NOERROR) {
+        *horizontal = resp.wBinningx;
+        *vertical = resp.wBinningy;
+    }
+    return err;
+}
+
+/**
+ * Get possible binning modes.
+ *
+ * @param pco A #pco_handle.
+ * @param horizontal Location to store horizontal binning information. The
+ *      pointer should be initialized with NULL.
+ * @param num_horizontal Number of elements in horizontal
+ * @param vertical Location to store vertical binning information. The pointer
+ *      should be initialized with NULL.
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ */
+unsigned int pco_get_possible_binnings(pco_handle pco, 
+        uint16_t **horizontal, unsigned int *num_horizontal,
+        uint16_t **vertical, unsigned int *num_vertical)
+{
+    /* TODO: implement */
+    return PCO_NOERROR;
 }
 
 /**
@@ -1294,7 +1393,6 @@ unsigned int pco_set_bit_alignment(pco_handle pco, bool msb_aligned)
     SC2_Bit_Alignment_Response resp;
     return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
 }
-
 
 /**
  * Trigger image request and transfer.

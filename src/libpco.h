@@ -37,6 +37,14 @@ typedef struct pco_t *pco_handle;
  */
 typedef void (*pco_reorder_image_t)(uint16_t *bufout, uint16_t *bufin, int width, int height);
 
+/**
+ * Possible values for ADC mode
+ */
+typedef enum {
+    PCO_SINGLE_ADC = 1,     /**< Read out using single ADC for better linearity */
+    PCO_PARALLEL_ADC        /**< Fast read out with two ADCs */
+} pco_adc_mode;
+
 pco_handle pco_init();
 void pco_destroy(pco_handle pco);
 
@@ -53,6 +61,8 @@ unsigned int pco_get_available_pixelrates(pco_handle pco, uint32_t rates[4], int
 unsigned int pco_get_pixelrate(pco_handle pco, uint32_t *rate);
 unsigned int pco_set_pixelrate(pco_handle pco, uint32_t rate);
 unsigned int pco_get_available_conversion_factors(pco_handle pco, uint16_t factors[4], int *num_rates);
+unsigned int pco_set_adc_mode(pco_handle pco, pco_adc_mode mode);
+unsigned int pco_get_adc_mode(pco_handle pco, pco_adc_mode *mode);
 
 unsigned int pco_get_cooling_range(pco_handle pco, int16_t *default_temp, int16_t *min_temp, int16_t *max_temp);
 unsigned int pco_set_cooling_temperature(pco_handle pco, int16_t temperature);
@@ -63,6 +73,9 @@ unsigned int pco_get_scan_mode(pco_handle pco, uint32_t *mode);
 
 unsigned int pco_set_roi(pco_handle pco, uint16_t *window);
 unsigned int pco_get_roi(pco_handle pco, uint16_t *window);
+unsigned int pco_set_binning(pco_handle pco, uint16_t horizontal, uint16_t vertical);
+unsigned int pco_get_binning(pco_handle pco, uint16_t *horizontal, uint16_t *vertical);
+unsigned int pco_get_possible_binnings(pco_handle pco, uint16_t **horizontal, unsigned int *num_horizontal, uint16_t **vertical, unsigned int *num_vertical);
 
 unsigned int pco_get_segment_sizes(pco_handle pco, size_t sizes[4]);
 unsigned int pco_get_active_segment(pco_handle pco, uint16_t *segment);
