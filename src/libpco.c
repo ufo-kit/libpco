@@ -42,9 +42,65 @@
  * free(name);
  * \endcode
  *
- * To release the camera call
+ * To release the camera, call
  *
  * \code pco_destroy(pco); \endcode
+ *
+ * \section frame_grabbing Frame Grabbing
+ *
+ * libpco is just a small wrapper and it is encouraged to use a higher level
+ * abstraction to make use of the different pco camera types. However, if you
+ * are using the SiliconSoftware SDK and want to grab frames on your own, you
+ * can write something like this:
+ *
+ * \code
+ * // The actual "applet" is specific to the camera type.
+ * static const char *applet = "libDualAreaGray16.so";
+ * int port = PORT_A;
+ * Fg_Struct *fg = Fg_Init(applet, 0);
+ *
+ * // The actual CameraLink connection is specific to the camera type and frame
+ * // grabber.
+ * int val = FG_CL_SINGLETAP_16_BIT;
+ * Fg_setParameter(fg, FG_CAMERA_LINK_CAMTYP, &val, port);
+ *
+ * // The frame format is specific to the camera type. Especially on the
+ * // pco.edge you have to use FG_GRAY and do the decoding on your own using the
+ * // pco_get_reorder_func()
+ * val = FG_GRAY16;
+ * Fg_setParameter(fg, FG_FORMAT, &val, port);
+ *
+ * val = FREE_RUN;
+ * Fg_setParameter(fg, FG_TRIGGERMODE, &val, port);
+ *
+ * fg, Fg_setParameter(fg, FG_WIDTH, &width, port);
+ * fg, Fg_setParameter(fg, FG_HEIGHT, &height, port);
+ *
+ * const int n_buffers = 5;
+ *
+ * dma_mem *mem = Fg_AllocMemEx(fg, n_buffers*width*height*sizeof(uint16_t), n_buffers);
+ * if (mem == NULL) 
+ *     fprintf(stderr, "Couldn't allocate buffer memory!\n");
+ *
+ * pco_arm_camera(pco);
+ * pco_set_rec_state(pco, 1);
+ *
+ * const int n_images = 1;
+ * fg, Fg_AcquireEx(fg, port, n_images, ACQ_STANDARD, mem);
+ *
+ * frameindex_t last_frame = 1;
+ *
+ * // For streaming cameras, this is unnecessary
+ * pco_read_images(pco, active_segment, 1, 1);
+ * pco_request_image(pco);
+ *
+ * // Request frame
+ * last_frame = Fg_getLastPicNumberBlockingEx(fg, n_images, port, n_images, mem);
+ *
+ * // Request data
+ * uint16_t *frame = (uint16_t *) Fg_getImagePtrEx(fg, last_frame, port, mem);
+ * Fg_stopAcquireEx(fg, port, mem, STOP_ASYNC);
+ * \endcode
  *
  * \section api_reference API reference
  *
