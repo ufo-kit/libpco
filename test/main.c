@@ -271,6 +271,32 @@ static void print_segment_info(pco_handle pco)
     print_number_of_valid_images(pco);
 }
 
+typedef struct {
+    int camera_type;
+    const char *so_file;
+    int cl_type;
+    int cl_format;
+} pco_cl_map_entry;
+
+static pco_cl_map_entry pco_cl_map[] = { 
+    {CAMERATYPE_PCO_EDGE,       "libFullAreaGray8.so",  FG_CL_8BIT_FULL_10,        FG_GRAY},
+    {CAMERATYPE_PCO4000,        "libDualAreaGray16.so", FG_CL_SINGLETAP_16_BIT,    FG_GRAY16},
+    {CAMERATYPE_PCO_DIMAX_STD,  "libFullAreaGray16.so", FG_CL_SINGLETAP_8_BIT,     FG_GRAY16},
+    {0, NULL, 0, 0}
+};
+
+static pco_cl_map_entry *get_pco_cl_map_entry(int camera_type)
+{
+    pco_cl_map_entry *entry = pco_cl_map;
+
+    while (entry->camera_type != 0) {
+        if (entry->camera_type == camera_type)
+            return entry;
+        entry++; 
+    }
+    return NULL;
+}
+
 int main(int argc, char const* argv[])
 {
     /* CameraLink specific */
@@ -322,39 +348,33 @@ int main(int argc, char const* argv[])
 
     uint32_t width = width_std, height = height_std;
 
-    /* Frame grabber specific
-     *  - edge: libFullAreaGray8
-     *  - 4000: libDualAreaGray16
-     *  - dimax: libFullAreaGray16
-     */
-    static const char *applet = "libDualAreaGray16.so";
     int port = PORT_A;
-    Fg_Struct *fg = Fg_Init(applet, 0);
+    uint16_t cam_type, cam_subtype;
+    CHECK_PCO(pco_get_camera_type(pco, &cam_type, &cam_subtype));
+    pco_cl_map_entry *entry = get_pco_cl_map_entry(cam_type);
 
-    /* This must be set for each camera type:
-     *  - edge: FG_CL_8BIT_FULL_10
-     *  - 4000: FC_CL_SINGLETAP_16_BIT
-     *  - dimax: FG_CL_SINGLETAP_8BIT
-     */
-    int val = FG_CL_SINGLETAP_16_BIT;
-    CHECK_FG(fg, Fg_setParameter(fg, FG_CAMERA_LINK_CAMTYP, &val, port));
+    if (entry == NULL) {
+        fprintf(stderr, "No suitable access library found\n");
+        pco_destroy(pco);
+        return 1;
+    }
 
-    /* This must be set for each camera type:
-     *  - edge: FG_GRAY
-     *  - 4000: FG_GRAY16
-     *  - dimax: FG_GRAY16 or FG_GRAY
-     */
-    val = FG_GRAY16;
-    CHECK_FG(fg, Fg_setParameter(fg, FG_FORMAT, &val, port));
+    Fg_Struct *fg = Fg_Init(entry->so_file, 0);
+    CHECK_FG(fg, Fg_setParameter(fg, FG_CAMERA_LINK_CAMTYP, &entry->cl_type, port));
+    CHECK_FG(fg, Fg_setParameter(fg, FG_FORMAT, &entry->cl_format, port));
 
-    val = FREE_RUN;
+    int val = FREE_RUN;
     CHECK_FG(fg, Fg_setParameter(fg, FG_TRIGGERMODE, &val, port));
 
     /* We need to adjust this for the edge */
-    /* width *= 2; */
+    if (cam_type == CAMERATYPE_PCO_EDGE)
+        width *= 2;
+
     CHECK_FG(fg, Fg_setParameter(fg, FG_WIDTH, &width, port));
     CHECK_FG(fg, Fg_setParameter(fg, FG_HEIGHT, &height, port));
-    /* width /= 2; */
+
+    if (cam_type == CAMERATYPE_PCO_EDGE)
+        width /= 2;
 
     printf("\n--- Port A -------------\n");
     print_parameters(fg, port);
@@ -408,24 +428,29 @@ int main(int argc, char const* argv[])
         printf(" Frame rate: %.2f Frames/s\n", n_images / (elapsed / 1000000.0f));
 
         uint16_t *frame = (uint16_t *) Fg_getImagePtrEx(fg, last_frame, port, mem);
-        
-        /* uint16_t *image = (uint16_t *) malloc(width*height*2); */
-        /* pco_get_reorder_func(pco)(image, frame, width, height); */
-
         FILE *fp = fopen("out.raw", "wb");
-        fwrite(frame, width*height*2, 1, fp);
+
+        if (cam_type == CAMERATYPE_PCO_EDGE) {
+            uint16_t *image = (uint16_t *) malloc(width*height*2);
+            pco_get_reorder_func(pco)(image, frame, width, height);
+            free(image);
+            fwrite(image, width * height * 2, 1, fp);
+        }
+        else
+            fwrite(frame, width * height * 2, 1, fp);
+
         fclose(fp);
     }
 
     CHECK_PCO(pco_set_rec_state(pco, 0));
     uint32_t num_images = 0;
+
     if (pco_get_num_images(pco, active_segment, &num_images) == PCO_NOERROR)
         printf(" Number of valid images: %i\n", num_images);
 
     /* Close CameraLink interfaces and frame grabber */
     CHECK_FG(fg, Fg_FreeMemEx(fg, mem));
     Fg_FreeGrabber(fg);
-
     pco_destroy(pco);
     
     return 0;
