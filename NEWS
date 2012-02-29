@@ -25,14 +25,20 @@ Changes in libpco 0.3.0
     - pco_get_possible_binnings()
     - pco_set_adc_mode()
     - pco_get_adc_mode()
+    - pco_start_recording()
+    - pco_stop_recording()
+    - pco_is_recording()
 
 - New types:
     - pco_adc_mode enum
 
 - Removed symbols from public API:
     - pco_read_property()
-    - pco_get_delay_exposure() (in favor of pco_get_(delay|exposure)_time())
-    - pco_set_delay_exposure() (in favor of pco_set_(delay|exposure)_time())
+    - pco_get_delay_exposure() (superseded by pco_get_(delay|exposure)_time())
+    - pco_set_delay_exposure() (superseded by pco_set_(delay|exposure)_time())
+    - pco_set_rec_state() (superseded by pco_start_recording() and
+      pco_stop_recording())
+    - pco_get_rec_state() (superseded by pco_is_recording())
 
 
 Changes in libpco 0.2.0

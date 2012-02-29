@@ -552,6 +552,64 @@ unsigned int pco_control_command(pco_handle pco,
     return err;
 }
 
+static unsigned int pco_get_rec_state(pco_handle pco, uint16_t *state)
+{
+    SC2_Recording_State_Response resp;
+    SC2_Simple_Telegram req = { .wCode = GET_RECORDING_STATE, .wSize = sizeof(req) };
+    unsigned int err = PCO_NOERROR;
+
+    err = pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    *state = resp.wState;
+    return err;
+}
+
+static unsigned int pco_set_rec_state(pco_handle pco, uint16_t state)
+{
+    const uint32_t REC_WAIT_TIME = 500;
+    uint16_t g_state, x = 0;
+    unsigned int err = PCO_NOERROR;
+
+    pco_get_rec_state(pco, &g_state);
+
+    if (g_state != state) {
+        uint32_t s, ns;
+        SC2_Set_Recording_State com;
+        SC2_Recording_State_Response resp;
+
+        com.wCode = SET_RECORDING_STATE;
+        com.wState = state;
+        com.wSize = sizeof(SC2_Set_Recording_State);
+        err = pco_control_command(pco, &com, sizeof(SC2_Set_Recording_State),
+                &resp, sizeof(SC2_Recording_State_Response));
+
+        if(err != PCO_NOERROR)
+            return err;
+
+        SC2_COC_Runtime_Response coc;
+        pco_read_property(pco, GET_COC_RUNTIME, &coc, sizeof(coc));
+        s = coc.dwtime_s;
+        ns = coc.dwtime_s;
+
+        ns /= 1000000;
+        ns += 1;
+        ns += s*1000;
+
+        ns += REC_WAIT_TIME;
+        ns /= 50;
+
+        for(int x = 0; x < ns; x++) {
+            pco_get_rec_state(pco, &g_state);
+            if(g_state == state)
+                break;
+
+            pco_msleep(50);
+        }
+        if(x >= ns)
+            err=PCO_ERROR_TIMEOUT;
+    }
+    return err;
+}
+
 /**
  * Read camera type.
  *
@@ -1060,80 +1118,43 @@ unsigned int pco_set_storage_mode(pco_handle pco, uint16_t mode)
 }
 
 /**
- * Get recording state.
+ * Check whether the camera is recording.
  *
  * @param pco A #pco_handle.
- * @param state 1 if recording, 0 if stopped.
+ * @param is_recording Location for storing the information.
  * @return Error code or PCO_NOERROR.
+ * @since 0.3
  */
-unsigned int pco_get_rec_state(pco_handle pco, uint16_t *state)
+unsigned int pco_is_recording(pco_handle pco, bool *is_recording)
 {
-    SC2_Recording_State_Response resp;
-    SC2_Simple_Telegram com;
-    unsigned int err = PCO_NOERROR;
-
-    com.wCode = GET_RECORDING_STATE;
-    com.wSize = sizeof(SC2_Simple_Telegram);
-    err = pco_control_command(pco, &com, sizeof(SC2_Simple_Telegram),
-        &resp, sizeof(SC2_Recording_State_Response));
-
-    *state =resp.wState;
+    uint16_t state;
+    unsigned int err = pco_get_rec_state(pco, &state);
+    if (err == PCO_NOERROR)
+        is_recording = state != 0;
     return err;
 }
 
 /**
- * Start or stop recording.
+ * Start recording.
  *
  * @param pco A #pco_handle.
- * @param state 1 to record, 0 to stop.
  * @return Error code or PCO_NOERROR.
  * @note Before starting any recording you have to call pco_arm_camera()!
  */
-unsigned int pco_set_rec_state(pco_handle pco, uint16_t state)
+unsigned int pco_start_recording(pco_handle pco)
 {
-    const uint32_t REC_WAIT_TIME = 500;
-    uint16_t g_state, x = 0;
-    unsigned int err = PCO_NOERROR;
+    return pco_set_rec_state(pco, 1);
+}
 
-    pco_get_rec_state(pco, &g_state);
-
-    if (g_state != state) {
-        uint32_t s, ns;
-        SC2_Set_Recording_State com;
-        SC2_Recording_State_Response resp;
-
-        com.wCode = SET_RECORDING_STATE;
-        com.wState = state;
-        com.wSize = sizeof(SC2_Set_Recording_State);
-        err = pco_control_command(pco, &com, sizeof(SC2_Set_Recording_State),
-                &resp, sizeof(SC2_Recording_State_Response));
-
-        if(err != PCO_NOERROR)
-            return err;
-
-        SC2_COC_Runtime_Response coc;
-        pco_read_property(pco, GET_COC_RUNTIME, &coc, sizeof(coc));
-        s = coc.dwtime_s;
-        ns = coc.dwtime_s;
-
-        ns /= 1000000;
-        ns += 1;
-        ns += s*1000;
-
-        ns += REC_WAIT_TIME;
-        ns /= 50;
-
-        for(int x = 0; x < ns; x++) {
-            pco_get_rec_state(pco, &g_state);
-            if(g_state == state)
-                break;
-
-            pco_msleep(50);
-        }
-        if(x >= ns)
-            err=PCO_ERROR_TIMEOUT;
-    }
-    return err;
+/**
+ * Stop recording.
+ *
+ * @param pco A #pco_handle.
+ * @return Error code or PCO_NOERROR.
+ */
+unsigned int pco_stop_recording(pco_handle pco)
+{
+    return pco_set_rec_state(pco, 0);
 }
 
 /**

@@ -61,6 +61,21 @@ static struct pco_types pco_cameras[] = {
     { 0, NULL }
 };
 
+typedef struct {
+    int camera_type;
+    const char *so_file;
+    int cl_type;
+    int cl_format;
+} pco_cl_map_entry;
+
+/* TODO: merge this table with pco_cameras */
+static pco_cl_map_entry pco_cl_map[] = { 
+    { CAMERATYPE_PCO_EDGE,       "libFullAreaGray8.so",  FG_CL_8BIT_FULL_10,        FG_GRAY },
+    { CAMERATYPE_PCO4000,        "libDualAreaGray16.so", FG_CL_SINGLETAP_16_BIT,    FG_GRAY16 },
+    { CAMERATYPE_PCO_DIMAX_STD,  "libFullAreaGray16.so", FG_CL_SINGLETAP_8_BIT,     FG_GRAY16 },
+    { 0, NULL, 0, 0}
+};
+
 static void print_parameters(Fg_Struct *fg, unsigned int dma_index)
 {
     int value, ret; 
@@ -271,20 +286,6 @@ static void print_segment_info(pco_handle pco)
     print_number_of_valid_images(pco);
 }
 
-typedef struct {
-    int camera_type;
-    const char *so_file;
-    int cl_type;
-    int cl_format;
-} pco_cl_map_entry;
-
-static pco_cl_map_entry pco_cl_map[] = { 
-    {CAMERATYPE_PCO_EDGE,       "libFullAreaGray8.so",  FG_CL_8BIT_FULL_10,        FG_GRAY},
-    {CAMERATYPE_PCO4000,        "libDualAreaGray16.so", FG_CL_SINGLETAP_16_BIT,    FG_GRAY16},
-    {CAMERATYPE_PCO_DIMAX_STD,  "libFullAreaGray16.so", FG_CL_SINGLETAP_8_BIT,     FG_GRAY16},
-    {0, NULL, 0, 0}
-};
-
 static pco_cl_map_entry *get_pco_cl_map_entry(int camera_type)
 {
     pco_cl_map_entry *entry = pco_cl_map;
@@ -395,7 +396,7 @@ int main(int argc, char const* argv[])
     fflush(stdout);
 
     CHECK_PCO(pco_arm_camera(pco));
-    CHECK_PCO(pco_set_rec_state(pco, 1));
+    CHECK_PCO(pco_start_recording(pco));
     CHECK_FG(fg, Fg_AcquireEx(fg, port, n_images, ACQ_STANDARD, mem));
 
     frameindex_t last_frame = 1;
@@ -442,7 +443,7 @@ int main(int argc, char const* argv[])
         fclose(fp);
     }
 
-    CHECK_PCO(pco_set_rec_state(pco, 0));
+    CHECK_PCO(pco_stop_recording(pco));
     uint32_t num_images = 0;
 
     if (pco_get_num_images(pco, active_segment, &num_images) == PCO_NOERROR)

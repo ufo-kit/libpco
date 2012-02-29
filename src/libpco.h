@@ -102,8 +102,9 @@ unsigned int pco_get_auto_transfer(pco_handle pco, int *transfer);
 unsigned int pco_get_storage_mode(pco_handle pco, uint16_t *mode);
 unsigned int pco_set_storage_mode(pco_handle pco, uint16_t mode);
 unsigned int pco_arm_camera(pco_handle pco);
-unsigned int pco_get_rec_state(pco_handle pco, uint16_t *state);
-unsigned int pco_set_rec_state(pco_handle pco, uint16_t state);
+unsigned int pco_start_recording(pco_handle pco);
+unsigned int pco_stop_recording(pco_handle pco);
+unsigned int pco_is_recording(pco_handle pco, bool *is_recording);
 unsigned int pco_get_acquire_mode(pco_handle pco, uint16_t *mode);
 unsigned int pco_set_acquire_mode(pco_handle pco, uint16_t mode);
 
