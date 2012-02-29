@@ -101,7 +101,7 @@
  *     fprintf(stderr, "Couldn't allocate buffer memory!\n");
  *
  * pco_arm_camera(pco);
- * pco_set_rec_state(pco, 1);
+ * pco_start_recording(pco);
  *
  * const int n_images = 1;
  * fg, Fg_AcquireEx(fg, port, n_images, ACQ_STANDARD, mem);
@@ -118,6 +118,7 @@
  * // Request data
  * uint16_t *frame = (uint16_t *) Fg_getImagePtrEx(fg, last_frame, port, mem);
  * Fg_stopAcquireEx(fg, port, mem, STOP_ASYNC);
+ * pco_stop_recording(pco);
  * \endcode
  *
  * \section api_reference API reference
