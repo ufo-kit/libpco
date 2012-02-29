@@ -1131,7 +1131,7 @@ unsigned int pco_is_recording(pco_handle pco, bool *is_recording)
     uint16_t state;
     unsigned int err = pco_get_rec_state(pco, &state);
     if (err == PCO_NOERROR)
-        is_recording = state != 0;
+        *is_recording = state != 0;
     return err;
 }
 
