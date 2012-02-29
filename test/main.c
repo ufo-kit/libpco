@@ -61,7 +61,7 @@ static struct pco_types pco_cameras[] = {
     { 0, NULL }
 };
 
-void print_parameters(Fg_Struct *fg, unsigned int dma_index)
+static void print_parameters(Fg_Struct *fg, unsigned int dma_index)
 {
     int value, ret; 
     for (int i = 0; params[i].desc != NULL; i++) {
@@ -73,7 +73,7 @@ void print_parameters(Fg_Struct *fg, unsigned int dma_index)
     }
 }
 
-const char *find_camera_type(uint32_t id)
+static const char *find_camera_type(uint32_t id)
 {
     int i = 0;
     while ((pco_cameras[i].name != NULL) && (pco_cameras[i].id != id))
@@ -81,38 +81,28 @@ const char *find_camera_type(uint32_t id)
     return pco_cameras[i].name;
 }
 
-int64_t time_diff(struct timeval *end, struct timeval *start)
+static int64_t time_diff(struct timeval *end, struct timeval *start)
 {
     return ((end->tv_sec * 1000000) + end->tv_usec) - ((start->tv_sec * 1000000) + start->tv_usec);
 }
 
-int main(int argc, char const* argv[])
+static void print_camera_name(pco_handle pco)
 {
-
-    /* CameraLink specific */
-    pco_handle pco = pco_init();
-    if (pco == NULL) {
-        printf("No CameraLink-based PCO camera found\n");
-        return 1;
-    }
-        
-    /* Query properties and output them */
-    printf("\n--- Camera ----------\n");
-    printf(" Active: ");
-    if (!pco_is_active(pco)) {
-        printf("no\n");
-        pco_destroy(pco);
-        return 1;
-    }
-    else
-        printf("yes\n");
-
     char *name = NULL;
-    if (pco_get_name(pco, &name) == PCO_NOERROR) {
+    if (pco_get_name(pco, &name) == PCO_NOERROR)
         printf("\n Camera name: %s\n", name);
-        free(name);
-    }
 
+    uint16_t type, subtype;
+    CHECK_PCO(pco_get_camera_type(pco, &type, &subtype));
+    const char *type_name = find_camera_type(type);
+    if (type_name != NULL)
+        printf(" Camera type: %s\n", type_name);
+
+    free(name);
+}
+
+static void print_version_info(pco_handle pco)
+{
     uint32_t serial_number;
     uint16_t hw_major, hw_minor, fw_major, fw_minor;
 
@@ -121,32 +111,50 @@ int main(int argc, char const* argv[])
         printf(" Hardware version: %i.%i\n", hw_major, hw_minor);
         printf(" Firmware version: %i.%i\n\n", fw_major, fw_minor);
     }
+}
 
+static void print_scan_mode(pco_handle pco)
+{
     uint32_t scan_mode = 0xFFFF;
     if (pco_get_scan_mode(pco, &scan_mode) == PCO_NOERROR)
         printf(" Current scan mode: %i\n", scan_mode);
+}
 
-    CHECK_PCO(pco_set_storage_mode(pco, STORAGE_MODE_RECORDER));
-
+static void print_temperature(pco_handle pco)
+{
     uint32_t temp_ccd, temp_cam, temp_power;
     if (pco_get_temperature(pco, &temp_ccd, &temp_cam, &temp_power) == PCO_NOERROR) {
         printf(" CCD temperature: %1.2f°C\n", (float) temp_ccd / 10.0f);
         printf(" Camera temperature: %.2f°C\n", (float) temp_cam);
         printf(" Power supply temperature: %.2f°C\n", (float) temp_power);
     }
+}
 
+static void print_delay_exposure(pco_handle pco)
+{
     uint32_t delay = 0, exposure = 5000;
-    CHECK_PCO(pco_set_delay_exposure(pco, delay, exposure));
-    CHECK_PCO(pco_get_delay_exposure(pco, &delay, &exposure));
+    CHECK_PCO(pco_set_delay_time(pco, delay));
+    CHECK_PCO(pco_set_exposure_time(pco, exposure));
+    CHECK_PCO(pco_get_delay_time(pco, &delay));
+    CHECK_PCO(pco_get_exposure_time(pco, &exposure));
     printf(" Delay: %u µs\n", delay);
     printf(" Exposure: %u µs\n", exposure);
+}
 
-    CHECK_PCO(pco_set_auto_transfer(pco, 1));
-    int transfer = 0;
-    if (pco_get_auto_transfer(pco, &transfer) == PCO_NOERROR) {
-        printf(" Auto-transfer: %i\n", transfer); 
-    }
+static void print_pixel_rates(pco_handle pco)
+{
+    uint32_t rates[4] = {0, };
+    int num_rates = 0;
 
+    CHECK_PCO(pco_get_available_pixelrates(pco, rates, &num_rates));
+    printf(" Pixel rates: ");
+    for (int i = 0; i < num_rates; i++)
+        printf("%i ", rates[i]);
+    printf("\n");
+}
+
+static void print_acquire_mode(pco_handle pco)
+{
     uint16_t mode;
     if (pco_get_acquire_mode(pco, &mode) == PCO_NOERROR) {
         printf(" Acquire mode: ");
@@ -164,7 +172,11 @@ int main(int argc, char const* argv[])
                 printf("[wrong value]\n");
         }
     }
+}
 
+static void print_trigger_mode(pco_handle pco)
+{
+    uint16_t mode;
     if (pco_get_trigger_mode(pco, &mode) == PCO_NOERROR) {
         printf(" Trigger mode: ");
         switch (mode) {
@@ -190,7 +202,11 @@ int main(int argc, char const* argv[])
                 printf("[wrong value]\n");
         }
     }
+}
 
+static void print_storage_mode(pco_handle pco)
+{
+    uint16_t mode;
     if (pco_get_storage_mode(pco, &mode) == PCO_NOERROR) {
         printf(" Storage mode: "); 
         switch (mode) {
@@ -204,33 +220,18 @@ int main(int argc, char const* argv[])
                 printf("[wrong value]\n");
         }
     }
+}
 
-    size_t sizes[4];
-    CHECK_PCO(pco_get_segment_sizes(pco, sizes));
-    printf(" Segment sizes: %i, %i, %i, %i pages\n", (int) sizes[0], (int) sizes[1], (int) sizes[2], (int) sizes[3]);
+static void print_auto_transfer(pco_handle pco)
+{
+    int transfer = 0;
+    if (pco_get_auto_transfer(pco, &transfer) == PCO_NOERROR) {
+        printf(" Auto-transfer: %i\n", transfer); 
+    }
+}
 
-    uint16_t active_segment;
-    CHECK_PCO(pco_get_active_segment(pco, &active_segment));
-    printf(" Active segment: %i\n", active_segment);
-
-    CHECK_PCO(pco_clear_active_segment(pco));
-    uint32_t num_images = 0;
-    CHECK_PCO(pco_get_num_images(pco, active_segment, &num_images));
-    printf(" Number of valid images: %i\n", num_images);
-
-    /* Setup for recording */
-    CHECK_PCO(pco_set_timestamp_mode(pco, TIMESTAMP_MODE_BINARYANDASCII));
-    CHECK_PCO(pco_set_timebase(pco, 1, 1));
-
-    uint16_t width_std, height_std, width_ex, height_ex;
-    CHECK_PCO(pco_get_resolution(pco, &width_std, &height_std, &width_ex, &height_ex));
-
-    uint16_t roi_window[4] = {1, 1, width_std, height_std};
-    CHECK_PCO(pco_set_roi(pco, roi_window));
-    CHECK_PCO(pco_get_roi(pco, roi_window));
-    printf(" ROI: <%i,%i> to <%i,%i>\n", roi_window[0], roi_window[1], roi_window[2], roi_window[3]);
-    printf(" Dimensions: %ix%i\n", width_std, height_std);
-
+static void print_binning(pco_handle pco)
+{
     unsigned int num_horizontal, num_vertical;
     uint16_t *horizontal_binnings = NULL, *vertical_binnings = NULL;
     CHECK_PCO(pco_get_possible_binnings(pco, &horizontal_binnings, &num_horizontal, &vertical_binnings, &num_vertical));
@@ -244,6 +245,80 @@ int main(int argc, char const* argv[])
 
     free(horizontal_binnings);
     free(vertical_binnings);
+}
+
+static void print_number_of_valid_images(pco_handle pco)
+{
+    uint16_t active_segment;
+    uint32_t num_images = 0;
+
+    CHECK_PCO(pco_get_active_segment(pco, &active_segment));
+    CHECK_PCO(pco_get_num_images(pco, active_segment, &num_images));
+    printf(" Number of valid images: %i\n", num_images);
+}
+
+static void print_segment_info(pco_handle pco)
+{
+    size_t sizes[4] = { 0, };
+    CHECK_PCO(pco_get_segment_sizes(pco, sizes));
+    printf(" Segment sizes: %i, %i, %i, %i pages\n", (int) sizes[0], (int) sizes[1], (int) sizes[2], (int) sizes[3]);
+
+    uint16_t active_segment;
+    CHECK_PCO(pco_get_active_segment(pco, &active_segment));
+    printf(" Active segment: %i\n", active_segment);
+
+    CHECK_PCO(pco_clear_active_segment(pco));
+    print_number_of_valid_images(pco);
+}
+
+int main(int argc, char const* argv[])
+{
+    /* CameraLink specific */
+    pco_handle pco = pco_init();
+    if (pco == NULL) {
+        printf("No CameraLink-based PCO camera found\n");
+        return 1;
+    }
+        
+    /* Query properties and output them */
+    printf("\n--- Camera ----------\n");
+    printf(" Active: ");
+    if (!pco_is_active(pco)) {
+        printf("no\n");
+        pco_destroy(pco);
+        return 1;
+    }
+    else
+        printf("yes\n");
+
+    CHECK_PCO(pco_set_storage_mode(pco, STORAGE_MODE_RECORDER));
+    CHECK_PCO(pco_set_auto_transfer(pco, 1));
+
+    print_camera_name(pco);
+    print_version_info(pco);
+    print_pixel_rates(pco);
+    print_scan_mode(pco);
+    print_temperature(pco);
+    print_delay_exposure(pco);
+    print_acquire_mode(pco);
+    print_trigger_mode(pco);
+    print_storage_mode(pco);
+    print_auto_transfer(pco);
+    print_binning(pco);
+    print_segment_info(pco);
+
+    /* Setup for recording */
+    CHECK_PCO(pco_set_timestamp_mode(pco, TIMESTAMP_MODE_BINARYANDASCII));
+    CHECK_PCO(pco_set_timebase(pco, 1, 1));
+
+    uint16_t width_std, height_std, width_ex, height_ex;
+    CHECK_PCO(pco_get_resolution(pco, &width_std, &height_std, &width_ex, &height_ex));
+    printf(" Maximum resolution: %ix%i (standard), %ix%i (extended)\n", width_std, height_std, width_ex, height_ex);
+
+    uint16_t roi_window[4] = {1, 1, width_std, height_std};
+    CHECK_PCO(pco_set_roi(pco, roi_window));
+    CHECK_PCO(pco_get_roi(pco, roi_window));
+    printf(" ROI: <%i,%i> to <%i,%i>\n", roi_window[0], roi_window[1], roi_window[2], roi_window[3]);
 
     uint32_t width = width_std, height = height_std;
 
@@ -307,11 +382,13 @@ int main(int argc, char const* argv[])
     struct timeval start, end;
 
     sleep(3);
-    if (pco_get_num_images(pco, active_segment, &num_images) == PCO_NOERROR)
-        printf(" Number of valid images: %i\n", num_images);
+    print_number_of_valid_images(pco);
 
+    uint16_t active_segment;
+    CHECK_PCO(pco_get_active_segment(pco, &active_segment));
     CHECK_PCO(pco_read_images(pco, active_segment, 1, 1));
     CHECK_PCO(pco_request_image(pco));
+
     gettimeofday(&start, NULL);
     last_frame = Fg_getLastPicNumberBlockingEx(fg, n_images, port, n_images, mem);
     gettimeofday(&end, NULL);
@@ -341,6 +418,7 @@ int main(int argc, char const* argv[])
     }
 
     CHECK_PCO(pco_set_rec_state(pco, 0));
+    uint32_t num_images = 0;
     if (pco_get_num_images(pco, active_segment, &num_images) == PCO_NOERROR)
         printf(" Number of valid images: %i\n", num_images);
 

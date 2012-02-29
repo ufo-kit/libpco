@@ -73,6 +73,7 @@ unsigned int pco_get_scan_mode(pco_handle pco, uint32_t *mode);
 
 unsigned int pco_set_roi(pco_handle pco, uint16_t *window);
 unsigned int pco_get_roi(pco_handle pco, uint16_t *window);
+unsigned int pco_get_roi_steps(pco_handle pco, uint16_t *horizontal, uint16_t *vertical);
 unsigned int pco_set_binning(pco_handle pco, uint16_t horizontal, uint16_t vertical);
 unsigned int pco_get_binning(pco_handle pco, uint16_t *horizontal, uint16_t *vertical);
 unsigned int pco_get_possible_binnings(pco_handle pco, uint16_t **horizontal, unsigned int *num_horizontal, uint16_t **vertical, unsigned int *num_vertical);
@@ -87,8 +88,12 @@ unsigned int pco_get_num_images(pco_handle pco, uint16_t segment, uint32_t *num_
 unsigned int pco_force_trigger(pco_handle pco, uint32_t *success);
 unsigned int pco_set_timestamp_mode(pco_handle pco, uint16_t mode);
 unsigned int pco_set_timebase(pco_handle pco, uint16_t delay,uint16_t expos);
-unsigned int pco_set_delay_exposure(pco_handle pco, uint32_t delay, uint32_t expos);
-unsigned int pco_get_delay_exposure(pco_handle pco, uint32_t *delay, uint32_t *expos);
+unsigned int pco_get_delay_time(pco_handle pco, uint32_t *delay);
+unsigned int pco_set_delay_time(pco_handle pco, uint32_t delay);
+unsigned int pco_get_delay_range(pco_handle pco, uint32_t *min_ns, uint32_t *max_ms, uint32_t *step_ns);
+unsigned int pco_get_exposure_time(pco_handle pco, uint32_t *exposure);
+unsigned int pco_set_exposure_time(pco_handle pco, uint32_t exposure);
+unsigned int pco_get_exposure_range(pco_handle pco, uint32_t *min_ns, uint32_t *max_ms, uint32_t *step_ns);
 unsigned int pco_get_trigger_mode(pco_handle pco, uint16_t *mode);
 unsigned int pco_set_trigger_mode(pco_handle pco, uint16_t mode);
 unsigned int pco_set_auto_transfer(pco_handle pco, int transfer);

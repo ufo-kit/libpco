@@ -12,7 +12,14 @@ Changes in libpco 0.3.0 [NOT YET RELEASED]
     - pco_get_cooling_range()
     - pco_set_cooling_temperature()
     - pco_get_cooling_temperature()
+    - pco_set_delay_time()
+    - pco_get_delay_time()
+    - pco_get_delay_range()
+    - pco_set_exposure_time()
+    - pco_get_exposure_time()
+    - pco_get_exposure_range()
     - pco_get_camera_version()
+    - pco_get_roi_steps()
     - pco_set_binning()
     - pco_get_binning()
     - pco_get_possible_binnings()
@@ -24,6 +31,8 @@ Changes in libpco 0.3.0 [NOT YET RELEASED]
 
 - Removed symbols from public API:
     - pco_read_property()
+    - pco_get_delay_exposure() (in favor of pco_get_(delay|exposure)_time())
+    - pco_set_delay_exposure() (in favor of pco_set_(delay|exposure)_time())
 
 
 Changes in libpco 0.2.0

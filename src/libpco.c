@@ -159,6 +159,9 @@ struct pco_t {
     PCO_SC2_TIMEOUTS timeouts;
     PCO_SC2_CL_TRANSFER_PARAM transfer;
     SC2_Camera_Description_Response description;
+
+    uint32_t delay;
+    uint32_t exposure;
     
     size_t extra_timeout;
 };
@@ -314,36 +317,16 @@ static unsigned int pco_get_num_binnings(uint16_t max_binning, int is_linear)
     return is_linear ? max_binning : pco_msb_pos(max_binning) + 1;
 }
 
-
-static unsigned int pco_set_cl_config(pco_handle pco)
+static unsigned int pco_set_delay_exposure(pco_handle pco, uint32_t delay, uint32_t exposure)
 {
-    SC2_Set_CL_Configuration cl_com;
-    SC2_Get_CL_Configuration_Response cl_resp;
-    unsigned int err = PCO_NOERROR;
+    SC2_Set_Delay_Exposure com;
+    SC2_Delay_Exposure_Response resp;
 
-    cl_com.wCode = SET_CL_CONFIGURATION;
-    cl_com.wSize = sizeof(cl_com);
-    cl_com.dwClockFrequency = pco->transfer.ClockFrequency;
-    cl_com.bTransmit = pco->transfer.Transmit & 0xFF;
-    cl_com.bCCline = pco->transfer.CCline & 0xFF;
-    cl_com.bDataFormat = pco->transfer.DataFormat & 0xFF;
-
-    err = pco_control_command(pco, &cl_com, sizeof(cl_com), &cl_resp, sizeof(cl_resp));
-    if (err != PCO_NOERROR)
-        return err;
-
-    if ((pco->description.wSensorTypeDESC == SENSOR_CIS2051_V1_FI_BW) ||
-        (pco->description.wSensorTypeDESC == SENSOR_CIS2051_V1_BI_BW)) {
-        SC2_Set_Interface_Output_Format req;
-        SC2_Set_Interface_Output_Format_Response resp_if;
-
-        req.wCode = SET_INTERFACE_OUTPUT_FORMAT;
-        req.wSize= sizeof(req);
-        req.wFormat = pco->transfer.DataFormat & SCCMOS_FORMAT_MASK;
-        req.wInterface = INTERFACE_CL_SCCMOS;
-        err = pco_control_command(pco, &req, sizeof(req), &resp_if, sizeof(resp_if));
-    }
-    return err;
+    com.wCode = SET_DELAY_EXPOSURE_TIME;
+    com.wSize = sizeof(SC2_Set_Delay_Exposure);
+    com.dwDelay = delay;
+    com.dwExposure = exposure;
+    return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
 }
 
 static unsigned int pco_retrieve_cl_config(pco_handle pco)
@@ -419,6 +402,49 @@ static unsigned int pco_read_property(pco_handle pco, uint16_t code, void *dst, 
     SC2_Simple_Telegram req = { .wCode = code, .wSize = sizeof(req) };
     return pco_control_command(pco, &req, sizeof(req), dst, size); 
 }
+
+static unsigned int pco_get_delay_exposure(pco_handle pco, uint32_t *delay, uint32_t *exposure)
+{
+    unsigned int err = PCO_NOERROR;
+    SC2_Delay_Exposure_Response resp;
+    if (pco_read_property(pco, GET_DELAY_EXPOSURE_TIME, &resp, sizeof(resp)) == PCO_NOERROR) {
+        *delay = resp.dwDelay;
+        *exposure = resp.dwExposure;
+    }
+    return err;
+}
+
+static unsigned int pco_set_cl_config(pco_handle pco)
+{
+    SC2_Set_CL_Configuration cl_com;
+    SC2_Get_CL_Configuration_Response cl_resp;
+    unsigned int err = PCO_NOERROR;
+
+    cl_com.wCode = SET_CL_CONFIGURATION;
+    cl_com.wSize = sizeof(cl_com);
+    cl_com.dwClockFrequency = pco->transfer.ClockFrequency;
+    cl_com.bTransmit = pco->transfer.Transmit & 0xFF;
+    cl_com.bCCline = pco->transfer.CCline & 0xFF;
+    cl_com.bDataFormat = pco->transfer.DataFormat & 0xFF;
+
+    err = pco_control_command(pco, &cl_com, sizeof(cl_com), &cl_resp, sizeof(cl_resp));
+    if (err != PCO_NOERROR)
+        return err;
+
+    if ((pco->description.wSensorTypeDESC == SENSOR_CIS2051_V1_FI_BW) ||
+        (pco->description.wSensorTypeDESC == SENSOR_CIS2051_V1_BI_BW)) {
+        SC2_Set_Interface_Output_Format req;
+        SC2_Set_Interface_Output_Format_Response resp_if;
+
+        req.wCode = SET_INTERFACE_OUTPUT_FORMAT;
+        req.wSize= sizeof(req);
+        req.wFormat = pco->transfer.DataFormat & SCCMOS_FORMAT_MASK;
+        req.wInterface = INTERFACE_CL_SCCMOS;
+        err = pco_control_command(pco, &req, sizeof(req), &resp_if, sizeof(resp_if));
+    }
+    return err;
+}
+
 
 static int pco_reset_serial(pco_handle pco)
 {
@@ -1197,44 +1223,95 @@ unsigned int pco_set_timebase(pco_handle pco, uint16_t delay, uint16_t exposure)
 }
 
 /**
- * Set current delay and exposure settings.
+ * Get delay time in current time base.
  *
  * @param pco A #pco_handle.
- * @param delay Delay before exposure starts.
- * @param exposure Exposure time.
+ * @param delay Location to store delay in current time base
  * @return Error code or PCO_NOERROR.
- * @see pco_set_timebase()
+ * @since 0.3
  */
-unsigned int pco_set_delay_exposure(pco_handle pco, uint32_t delay, uint32_t exposure)
+unsigned int pco_get_delay_time(pco_handle pco, uint32_t *delay)
 {
-    SC2_Set_Delay_Exposure com;
-    SC2_Delay_Exposure_Response resp;
-
-    com.wCode = SET_DELAY_EXPOSURE_TIME;
-    com.wSize = sizeof(SC2_Set_Delay_Exposure);
-    com.dwDelay = delay;
-    com.dwExposure = exposure;
-    return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
+    *delay = pco->delay;
+    return PCO_NOERROR;
 }
 
 /**
- * Read current delay and exposure settings.
+ * Set delay time in current time base.
  *
  * @param pco A #pco_handle.
- * @param delay Delay before exposure starts.
- * @param exposure Exposure time.
+ * @param delay Delay time in current time base
  * @return Error code or PCO_NOERROR.
- * @see pco_set_timebase()
+ * @since 0.3
  */
-unsigned int pco_get_delay_exposure(pco_handle pco, uint32_t *delay, uint32_t *exposure)
+unsigned int pco_set_delay_time(pco_handle pco, uint32_t delay)
 {
-    unsigned int err = PCO_NOERROR;
-    SC2_Delay_Exposure_Response resp;
-    if (pco_read_property(pco, GET_DELAY_EXPOSURE_TIME, &resp, sizeof(resp)) == PCO_NOERROR) {
-        *delay = resp.dwDelay;
-        *exposure = resp.dwExposure;
-    }
-    return err;
+    pco->delay = delay;
+    return pco_set_delay_exposure(pco, delay, pco->exposure);
+}
+
+/**
+ * Get delay time range for valid values that can be set with pco_set_delay().
+ *
+ * @param pco A #pco_handle.
+ * @param min_ns Location to store minimum delay in nano seconds
+ * @param max_ms Location to store maximum delay in milli seconds
+ * @param step_ns Location to store steps in nano seconds
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ */
+unsigned int pco_get_delay_range(pco_handle pco, uint32_t *min_ns, uint32_t *max_ms, uint32_t *step_ns)
+{
+    *min_ns = pco->description.dwMinDelayDESC;
+    *max_ms = pco->description.dwMaxDelayDESC;
+    *step_ns = pco->description.dwMinDelayStepDESC;
+    return PCO_NOERROR;
+}
+
+/**
+ * Get exposure time.
+ *
+ * @param pco A #pco_handle.
+ * @param exposure Location to store exposure time in current time base
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ */
+unsigned int pco_get_exposure_time(pco_handle pco, uint32_t *exposure)
+{
+    *exposure = pco->exposure;
+    return PCO_NOERROR;
+}
+
+/**
+ * Set exposure time in current time base.
+ *
+ * @param pco A #pco_handle.
+ * @param exposure Exposure time in current time base
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ */
+unsigned int pco_set_exposure_time(pco_handle pco, uint32_t exposure)
+{
+    pco->exposure = exposure;
+    return pco_set_delay_exposure(pco, pco->delay, exposure);
+}
+
+/**
+ * Get exposure time range.
+ *
+ * @param pco A #pco_handle.
+ * @param min_ns Location to store minimum delay in nano seconds
+ * @param max_ms Location to store maximum delay in milli seconds
+ * @param step_ns Location to store steps in nano seconds
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ */
+unsigned int pco_get_exposure_range(pco_handle pco, uint32_t *min_ns, uint32_t *max_ms, uint32_t *step_ns)
+{
+    *min_ns = pco->description.dwMinExposureDESC;
+    *max_ms = pco->description.dwMaxExposureDESC;
+    *step_ns = pco->description.dwMinExposureStepDESC;
+    return PCO_NOERROR;
 }
 
 /**
@@ -1277,6 +1354,21 @@ unsigned int pco_get_roi(pco_handle pco, uint16_t *window)
         window[3] = resp.wROI_y1;
     }
     return err; 
+}
+
+/**
+ * Get number of steps that you can use to increase the region of interest.
+ *
+ * @param pco A #pco_handle.
+ * @param horizontal Location to store number of horizontal ROI steps
+ * @param vertical Location to store number of vertical ROI steps
+ * @return Error code or PCO_NOERROR.
+ */
+unsigned int pco_get_roi_steps(pco_handle pco, uint16_t *horizontal, uint16_t *vertical)
+{
+    *horizontal = pco->description.wRoiHorStepsDESC;
+    *vertical = pco->description.wRoiVertStepsDESC;
+    return PCO_NOERROR;
 }
 
 /**
@@ -1630,6 +1722,11 @@ pco_handle pco_init(void)
 
     if (pco_scan_and_set_baud_rate(pco) != PCO_NOERROR) {
         fprintf(stderr, "Unable to scan and set baud rate\n");
+        goto no_pco;
+    }
+
+    if (pco_get_delay_exposure(pco, &pco->delay, &pco->exposure)) {
+        fprintf(stderr, "Unable to read default delay and exposure time\n"); 
         goto no_pco;
     }
 
