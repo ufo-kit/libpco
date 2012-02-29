@@ -5,6 +5,6 @@ includedir=@PCO_PKG_INCLUDEDIR@
 
 Name: @TARNAME@
 Description: @PCO_DESCRIPTION_SUMMARY@
-Version: @PACKAGE_VERSION@
+Version: @LIBPCO_ABI_VERSION@
 Libs: -L${libdir} -lpco
 Cflags: -I${includedir}
