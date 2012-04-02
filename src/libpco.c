@@ -125,6 +125,10 @@
  *
  * All function definitions can be found in libpco.h.
  *
+ * \defgroup general General camera properties
+ * \defgroup sensor Sensor properties
+ * \defgroup recording Recording options
+ *
  */
 
 #include <stdio.h>
@@ -612,6 +616,34 @@ static unsigned int pco_set_rec_state(pco_handle pco, uint16_t state)
 }
 
 /**
+ * \addtogroup general
+ * @{
+ */
+
+/**
+ * Read the name of the camera.
+ *
+ * @param pco A #pco_handle.
+ * @param name Pointer to zero-terminated string containing the name. Memory is
+ * allocated by the library and must be freed by the caller.
+ * @return Error code or PCO_NOERROR.
+ * @since 0.2
+ */
+unsigned int pco_get_name(pco_handle pco, char **name)
+{
+    SC2_Camera_Name_Response resp;
+    unsigned int err = pco_read_property(pco, GET_CAMERA_NAME, &resp, sizeof(resp));
+    if (err == PCO_NOERROR) {
+        char *s = (char *) malloc(40);
+        strncpy(s, resp.szName, 40);
+        *name = s;
+    }
+    else
+        *name = NULL;
+    return err;
+}
+
+/**
  * Read camera type.
  *
  * @param pco A #pco_handle.
@@ -695,6 +727,12 @@ unsigned int pco_reset(pco_handle pco)
     return pco_read_property(pco, RESET_SETTINGS_TO_DEFAULT, &resp, sizeof(resp));
 }
 
+/** @} */
+
+/** \addtogroup sensor
+ *  @{
+ */
+
 /**
  * Read temperature of different camera components.
  *
@@ -771,29 +809,6 @@ unsigned int pco_get_cooling_temperature(pco_handle pco, int16_t *temperature)
     unsigned int err = pco_read_property(pco, GET_CAMERA_NAME, &resp, sizeof(resp));
     if (err == PCO_NOERROR)
         *temperature = resp.sTemp; 
-    return err;
-}
-
-/**
- * Read the name of the camera.
- *
- * @param pco A #pco_handle.
- * @param name Pointer to zero-terminated string containing the name. Memory is
- * allocated by the library and must be freed by the caller.
- * @return Error code or PCO_NOERROR.
- * @since 0.2
- */
-unsigned int pco_get_name(pco_handle pco, char **name)
-{
-    SC2_Camera_Name_Response resp;
-    unsigned int err = pco_read_property(pco, GET_CAMERA_NAME, &resp, sizeof(resp));
-    if (err == PCO_NOERROR) {
-        char *s = (char *) malloc(40);
-        strncpy(s, resp.szName, 40);
-        *name = s;
-    }
-    else
-        *name = NULL;
     return err;
 }
 
@@ -1004,6 +1019,13 @@ unsigned int pco_get_scan_mode(pco_handle pco, uint32_t *mode)
     return err;
 }
 
+/** @} */
+
+/**
+ * \addtogroup recording
+ * @{
+ */
+
 /**
  * Set trigger mode.
  * @param pco A #pco_handle.
@@ -1191,6 +1213,8 @@ unsigned int pco_set_acquire_mode(pco_handle pco, uint16_t mode)
     SC2_Acquire_Mode_Response resp; 
     return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
 }
+
+/** @} */
 
 /**
  * Set timestamp mode. If this is not TIMESTAMP_MODE_OFF, a timestamp will be
@@ -1537,6 +1561,49 @@ unsigned int pco_get_num_images(pco_handle pco, uint16_t segment, uint32_t *num_
 }
 
 /**
+ * Trigger image request and transfer.
+ * @param pco A #pco_handle
+ * @return Error code or PCO_NOERROR.
+ * @since 0.2
+ */
+unsigned int pco_request_image(pco_handle pco)
+{
+    SC2_Request_Image req = { .wCode = REQUEST_IMAGE, .wSize = sizeof(req) };
+    SC2_Request_Image_Response resp;
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+}
+
+/**
+ * Read images from a segment. This method is only useful for cameras with
+ * on-board memory that can be read out after recording (e.g. pco.dimax and
+ * pco.4000).
+ *
+ * @param pco A #pco_handle
+ * @param segment Number of the segment from where to read. 
+ * @param start First frame to read.
+ * @param end Last frame to read.
+ * @return Error code or PCO_NOERROR.
+ * @since 0.2
+ * @see pco_get_active_segment()
+ * @note Although you can specify start and end frame, it is _not_ possible to
+ * read a range of images due to the hardware implementation. You always have to
+ * specify start == end.
+ */
+unsigned int pco_read_images(pco_handle pco, uint16_t segment, uint32_t start, uint32_t end)
+{
+    SC2_Read_Images_from_Segment req = { 
+        .wCode = READ_IMAGES_FROM_SEGMENT, 
+        .wSize = sizeof(req),
+        .wSegment = segment,
+        .dwStartImage = start,
+        .dwLastImage = end
+    };
+    SC2_Read_Images_from_Segment_Response resp;
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+}
+
+
+/**
  * Return size of each of the four segments.
  *
  * @param pco A #pco_handle
@@ -1623,48 +1690,6 @@ unsigned int pco_set_bit_alignment(pco_handle pco, bool msb_aligned)
         .wAlignment = msb_aligned ? 0 : 1 
     };
     SC2_Bit_Alignment_Response resp;
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
-}
-
-/**
- * Trigger image request and transfer.
- * @param pco A #pco_handle
- * @return Error code or PCO_NOERROR.
- * @since 0.2
- */
-unsigned int pco_request_image(pco_handle pco)
-{
-    SC2_Request_Image req = { .wCode = REQUEST_IMAGE, .wSize = sizeof(req) };
-    SC2_Request_Image_Response resp;
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
-}
-
-/**
- * Read images from a segment. This method is only useful for cameras with
- * on-board memory that can be read out after recording (e.g. pco.dimax and
- * pco.4000).
- *
- * @param pco A #pco_handle
- * @param segment Number of the segment from where to read. 
- * @param start First frame to read.
- * @param end Last frame to read.
- * @return Error code or PCO_NOERROR.
- * @since 0.2
- * @see pco_get_active_segment()
- * @note Although you can specify start and end frame, it is _not_ possible to
- * read a range of images due to the hardware implementation. You always have to
- * specify start == end.
- */
-unsigned int pco_read_images(pco_handle pco, uint16_t segment, uint32_t start, uint32_t end)
-{
-    SC2_Read_Images_from_Segment req = { 
-        .wCode = READ_IMAGES_FROM_SEGMENT, 
-        .wSize = sizeof(req),
-        .wSegment = segment,
-        .dwStartImage = start,
-        .dwLastImage = end
-    };
-    SC2_Read_Images_from_Segment_Response resp;
     return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
