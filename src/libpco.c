@@ -573,45 +573,42 @@ static unsigned int pco_set_rec_state(pco_handle pco, uint16_t state)
     const uint32_t REC_WAIT_TIME = 500;
     uint16_t g_state, x = 0;
     unsigned int err = PCO_NOERROR;
+    uint32_t s, ns;
+    SC2_Set_Recording_State com;
+    SC2_Recording_State_Response resp;
 
-    pco_get_rec_state(pco, &g_state);
+    com.wCode = SET_RECORDING_STATE;
+    com.wState = state;
+    com.wSize = sizeof(SC2_Set_Recording_State);
+    err = pco_control_command(pco, &com, sizeof(SC2_Set_Recording_State),
+            &resp, sizeof(SC2_Recording_State_Response));
 
-    if (g_state != state) {
-        uint32_t s, ns;
-        SC2_Set_Recording_State com;
-        SC2_Recording_State_Response resp;
+    if (err != PCO_NOERROR)
+        return err;
 
-        com.wCode = SET_RECORDING_STATE;
-        com.wState = state;
-        com.wSize = sizeof(SC2_Set_Recording_State);
-        err = pco_control_command(pco, &com, sizeof(SC2_Set_Recording_State),
-                &resp, sizeof(SC2_Recording_State_Response));
+    SC2_COC_Runtime_Response coc;
+    pco_read_property(pco, GET_COC_RUNTIME, &coc, sizeof(coc));
+    s = coc.dwtime_s;
+    ns = coc.dwtime_s;
 
-        if(err != PCO_NOERROR)
-            return err;
+    ns /= 1000000;
+    ns += 1;
+    ns += s*1000;
 
-        SC2_COC_Runtime_Response coc;
-        pco_read_property(pco, GET_COC_RUNTIME, &coc, sizeof(coc));
-        s = coc.dwtime_s;
-        ns = coc.dwtime_s;
+    ns += REC_WAIT_TIME;
+    ns /= 50;
 
-        ns /= 1000000;
-        ns += 1;
-        ns += s*1000;
+    for (x = 0; x < ns; x++) {
+        pco_get_rec_state(pco, &g_state);
+        if (g_state == state)
+            break;
 
-        ns += REC_WAIT_TIME;
-        ns /= 50;
-
-        for(int x = 0; x < ns; x++) {
-            pco_get_rec_state(pco, &g_state);
-            if(g_state == state)
-                break;
-
-            pco_msleep(50);
-        }
-        if(x >= ns)
-            err=PCO_ERROR_TIMEOUT;
+        pco_msleep(1000);
     }
+
+    if (x >= ns)
+        err = PCO_ERROR_TIMEOUT;
+
     return err;
 }
 
