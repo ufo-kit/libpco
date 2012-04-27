@@ -107,6 +107,8 @@ unsigned int pco_get_auto_transfer(pco_handle pco, int *transfer);
 
 unsigned int pco_get_storage_mode(pco_handle pco, uint16_t *mode);
 unsigned int pco_set_storage_mode(pco_handle pco, uint16_t mode);
+unsigned int pco_get_record_mode(pco_handle pco, uint16_t *mode);
+unsigned int pco_set_record_mode(pco_handle pco, uint16_t mode);
 unsigned int pco_arm_camera(pco_handle pco);
 unsigned int pco_start_recording(pco_handle pco);
 unsigned int pco_stop_recording(pco_handle pco);

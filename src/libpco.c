@@ -1137,6 +1137,22 @@ unsigned int pco_set_storage_mode(pco_handle pco, uint16_t mode)
     return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
+unsigned int pco_get_record_mode(pco_handle pco, uint16_t *mode)
+{
+    SC2_Recorder_Submode_Response resp;
+    unsigned int err = pco_read_property(pco, GET_RECORDER_SUBMODE, &resp, sizeof(resp));
+    if (err == PCO_NOERROR)
+        *mode = resp.wMode;
+    return err;
+}
+
+unsigned int pco_set_record_mode(pco_handle pco, uint16_t mode)
+{
+    SC2_Set_Recorder_Submode req = { .wCode = SET_RECORDER_SUBMODE, .wSize = sizeof(req), .wMode = mode };
+    SC2_Recorder_Submode_Response resp;
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+}
+
 /**
  * Check whether the camera is recording.
  *

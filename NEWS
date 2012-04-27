@@ -32,8 +32,10 @@ Changes in libpco 0.3.0
     - pco_is_double_image_mode_available()
     - pco_set_double_image_mode()
     - pco_get_double_image_mode()
-    - pco_set_offset_mode();
-    - pco_get_offset_mode();
+    - pco_set_offset_mode()
+    - pco_get_offset_mode()
+    - pco_get_record_mode()
+    - pco_set_record_mode()
 
 - New types:
     - pco_adc_mode enum
