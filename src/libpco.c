@@ -1539,6 +1539,25 @@ unsigned int pco_get_double_image_mode(pco_handle pco, bool *on)
     return err;
 }
 
+unsigned int pco_set_offset_mode(pco_handle pco, bool on)
+{
+    /* Yes, indeed. 0 means AUTO and 1 means OFF */
+    SC2_Set_Offset_Mode req = { .wCode = SET_OFFSET_MODE, .wMode = on ? 0 : 1, .wSize = sizeof(req) };
+    SC2_Offset_Mode_Response resp;
+     return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+}
+
+unsigned int pco_get_offset_mode(pco_handle pco, bool *on)
+{
+    SC2_Offset_Mode_Response resp;
+
+    unsigned int err = pco_read_property(pco, GET_OFFSET_MODE, &resp, sizeof(resp));
+
+    if (err == PCO_NOERROR)
+        *on = resp.wMode == 0;
+    return err;
+}
+
 /**
  * Set hotpixel correction.
  *

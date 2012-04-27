@@ -80,6 +80,8 @@ unsigned int pco_get_possible_binnings(pco_handle pco, uint16_t **horizontal, un
 bool pco_is_double_image_mode_available(pco_handle pco);
 unsigned int pco_set_double_image_mode(pco_handle pco, bool on);
 unsigned int pco_get_double_image_mode(pco_handle pco, bool *on);
+unsigned int pco_set_offset_mode(pco_handle pco, bool on);
+unsigned int pco_get_offset_mode(pco_handle pco, bool *on);
 
 unsigned int pco_get_segment_sizes(pco_handle pco, size_t sizes[4]);
 unsigned int pco_get_active_segment(pco_handle pco, uint16_t *segment);
