@@ -120,6 +120,8 @@ unsigned int pco_request_image(pco_handle pco);
 unsigned int pco_read_images(pco_handle pco, uint16_t segment, uint32_t start, uint32_t end);
 unsigned int pco_get_actual_size(pco_handle pco, uint32_t *width, uint32_t *height);
 unsigned int pco_set_hotpixel_correction(pco_handle pco, uint32_t mode);
+unsigned int pco_get_noise_filter_mode(pco_handle pco, uint16_t *mode);
+unsigned int pco_set_noise_filter_mode(pco_handle pco, uint16_t mode);
 
 unsigned int pco_control_command(pco_handle pco, void *buffer_in, uint32_t size_in, void *buffer_out, uint32_t size_out);
 

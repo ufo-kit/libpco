@@ -36,6 +36,8 @@ Changes in libpco 0.3.0
     - pco_get_offset_mode()
     - pco_get_record_mode()
     - pco_set_record_mode()
+    - pco_get_noise_filter_mode()
+    - pco_set_noise_filter_mode()
 
 - New types:
     - pco_adc_mode enum

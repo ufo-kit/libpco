@@ -1566,7 +1566,6 @@ unsigned int pco_set_offset_mode(pco_handle pco, bool on)
 unsigned int pco_get_offset_mode(pco_handle pco, bool *on)
 {
     SC2_Offset_Mode_Response resp;
-
     unsigned int err = pco_read_property(pco, GET_OFFSET_MODE, &resp, sizeof(resp));
 
     if (err == PCO_NOERROR)
@@ -1593,6 +1592,23 @@ unsigned int pco_set_hotpixel_correction(pco_handle pco, uint32_t mode)
     com.wSize = sizeof(com);
     com.wMode = mode;
     return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
+}
+
+unsigned int pco_get_noise_filter_mode(pco_handle pco, uint16_t *mode)
+{
+    SC2_Noise_Filter_Mode_Response resp;
+    unsigned int err = pco_read_property(pco, GET_NOISE_FILTER_MODE, &resp, sizeof(resp));
+
+    if (err == PCO_NOERROR)
+        *mode = resp.wMode;
+    return err;
+}
+
+unsigned int pco_set_noise_filter_mode(pco_handle pco, uint16_t mode)
+{
+    SC2_Set_Noise_Filter_Mode req = { .wCode = SET_NOISE_FILTER_MODE, .wSize = sizeof(req), .wMode = mode };
+    SC2_Noise_Filter_Mode_Response resp;
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 /**
