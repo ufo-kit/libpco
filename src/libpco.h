@@ -77,6 +77,9 @@ unsigned int pco_get_roi_steps(pco_handle pco, uint16_t *horizontal, uint16_t *v
 unsigned int pco_set_binning(pco_handle pco, uint16_t horizontal, uint16_t vertical);
 unsigned int pco_get_binning(pco_handle pco, uint16_t *horizontal, uint16_t *vertical);
 unsigned int pco_get_possible_binnings(pco_handle pco, uint16_t **horizontal, unsigned int *num_horizontal, uint16_t **vertical, unsigned int *num_vertical);
+bool pco_is_double_image_mode_available(pco_handle pco);
+unsigned int pco_set_double_image_mode(pco_handle pco, bool on);
+unsigned int pco_get_double_image_mode(pco_handle pco, bool *on);
 
 unsigned int pco_get_segment_sizes(pco_handle pco, size_t sizes[4]);
 unsigned int pco_get_active_segment(pco_handle pco, uint16_t *segment);

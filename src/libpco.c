@@ -734,7 +734,7 @@ unsigned int pco_reset(pco_handle pco)
  * Read temperature of different camera components.
  *
  * @param pco A #pco_handle.
- * @param ccd Temperature of the CCD sensor chip in degree celsius times 10.
+ * @param ccd Temperature of the CCD sensor chip in degree celsius divided by 10.
  * @param camera Temperature of the camera in degree celsius.
  * @param power Temperature of the power supply in degree celsius.
  * @return Error code or PCO_NOERROR.
@@ -1515,6 +1515,28 @@ unsigned int pco_get_possible_binnings(pco_handle pco,
     *num_vertical = num_v;
 
     return PCO_NOERROR;
+}
+
+bool pco_is_double_image_mode_available(pco_handle pco)
+{
+    return pco->description.wDoubleImageDESC == 1;
+}
+
+unsigned int pco_set_double_image_mode(pco_handle pco, bool on)
+{
+     SC2_Set_Double_Image_Mode req = { .wCode = SET_DOUBLE_IMAGE_MODE, .wMode = on ? 1 : 0, .wSize = sizeof(req) };
+     SC2_Double_Image_Mode_Response resp;
+     return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+}
+
+unsigned int pco_get_double_image_mode(pco_handle pco, bool *on)
+{
+    SC2_Double_Image_Mode_Response resp;
+    unsigned int err = pco_read_property(pco, GET_DOUBLE_IMAGE_MODE, &resp, sizeof(resp));
+
+    if (err == PCO_NOERROR)
+        *on = resp.wMode == 1;
+    return err;
 }
 
 /**

@@ -29,6 +29,9 @@ Changes in libpco 0.3.0
     - pco_start_recording()
     - pco_stop_recording()
     - pco_is_recording()
+    - pco_is_double_image_mode_available()
+    - pco_set_double_image_mode()
+    - pco_get_double_image_mode()
 
 - New types:
     - pco_adc_mode enum
