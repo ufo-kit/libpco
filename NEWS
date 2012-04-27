@@ -18,6 +18,7 @@ Changes in libpco 0.3.0
     - pco_set_exposure_time()
     - pco_get_exposure_time()
     - pco_get_exposure_range()
+    - pco_get_timebase()
     - pco_get_camera_version()
     - pco_get_roi_steps()
     - pco_set_binning()

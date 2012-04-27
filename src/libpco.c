@@ -1266,6 +1266,28 @@ unsigned int pco_set_timebase(pco_handle pco, uint16_t delay, uint16_t exposure)
 }
 
 /**
+ * Read time scale of delay and exposure time.
+ *
+ * @param pco A #pco_handle
+ * @param delay Location to store delay scale
+ * @param exposure Location to store exposure scale
+ * @return Error code or PCO_NOERROR
+ */
+unsigned int pco_get_timebase(pco_handle pco, uint16_t *delay, uint16_t *exposure)
+{
+    SC2_Timebase_Response resp;
+    unsigned int err = pco_read_property(pco, GET_TIMEBASE, &resp, sizeof(resp));
+
+    if (err == PCO_NOERROR) {
+        *delay = resp.wTimebaseDelay;
+        *exposure = resp.wTimebaseExposure;
+    }
+
+    return err;
+}
+
+
+/**
  * Get delay time in current time base.
  *
  * @param pco A #pco_handle.
