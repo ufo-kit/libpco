@@ -56,6 +56,8 @@ unsigned int pco_get_health_state(pco_handle pco, uint32_t *warnings, uint32_t *
 unsigned int pco_reset(pco_handle pco);
 unsigned int pco_get_temperature(pco_handle pco, uint32_t *ccd, uint32_t *camera, uint32_t *power);
 unsigned int pco_get_name(pco_handle pco, char **name);
+unsigned int pco_get_sensor_format(pco_handle pco, uint16_t *format);
+unsigned int pco_set_sensor_format(pco_handle pco, uint16_t format);
 unsigned int pco_get_resolution(pco_handle pco, uint16_t *width_std, uint16_t *height_std, uint16_t *width_ex, uint16_t *height_ex);
 unsigned int pco_get_available_pixelrates(pco_handle pco, uint32_t rates[4], int *num_rates);
 unsigned int pco_get_pixelrate(pco_handle pco, uint32_t *rate);

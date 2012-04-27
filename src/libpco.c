@@ -730,6 +730,22 @@ unsigned int pco_reset(pco_handle pco)
  *  @{
  */
 
+unsigned int pco_get_sensor_format(pco_handle pco, uint16_t *format)
+{
+    SC2_Sensor_Format_Response resp;
+    unsigned int err = pco_read_property(pco, GET_SENSOR_FORMAT, &resp, sizeof(resp));
+    if (err == PCO_NOERROR)
+        *format = resp.wFormat;
+    return err;
+}
+
+unsigned int pco_set_sensor_format(pco_handle pco, uint16_t format)
+{
+    SC2_Set_Sensor_Format req = { .wCode = SET_SENSOR_FORMAT, .wSize = sizeof(req), .wFormat = format };
+    SC2_Sensor_Format_Response resp;
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+}
+
 /**
  * Read temperature of different camera components.
  *
