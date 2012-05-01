@@ -730,6 +730,15 @@ unsigned int pco_reset(pco_handle pco)
  *  @{
  */
 
+/**
+ * Read currently set sensor format.
+ *
+ * @param pco A #pco_handle.
+ * @param format Location for format of the sensor (SENSORFORMAT_EXTENDED,
+ * SENSORFORMAT_STANDARD)
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ */
 unsigned int pco_get_sensor_format(pco_handle pco, uint16_t *format)
 {
     SC2_Sensor_Format_Response resp;
@@ -739,6 +748,15 @@ unsigned int pco_get_sensor_format(pco_handle pco, uint16_t *format)
     return err;
 }
 
+/**
+ * Set sensor format.
+ *
+ * @param pco A #pco_handle.
+ * @param format Format of the sensor (SENSORFORMAT_EXTENDED,
+ * SENSORFORMAT_STANDARD)
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ */
 unsigned int pco_set_sensor_format(pco_handle pco, uint16_t format)
 {
     SC2_Set_Sensor_Format req = { .wCode = SET_SENSOR_FORMAT, .wSize = sizeof(req), .wFormat = format };
@@ -1153,6 +1171,15 @@ unsigned int pco_set_storage_mode(pco_handle pco, uint16_t mode)
     return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
+/**
+ * Read currently set record mode
+ *
+ * @param pco A #pco_handle.
+ * @param mode Location for the mode (RECORDER_SUBMODE_RINGBUFFER,
+ * RECORDER_SUBMODE_SEQUENCE)
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ */
 unsigned int pco_get_record_mode(pco_handle pco, uint16_t *mode)
 {
     SC2_Recorder_Submode_Response resp;
@@ -1162,6 +1189,15 @@ unsigned int pco_get_record_mode(pco_handle pco, uint16_t *mode)
     return err;
 }
 
+/**
+ * Set record mode
+ *
+ * @param pco A #pco_handle.
+ * @param mode Record mode (RECORDER_SUBMODE_RINGBUFFER,
+ * RECORDER_SUBMODE_SEQUENCE)
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ */
 unsigned int pco_set_record_mode(pco_handle pco, uint16_t mode)
 {
     SC2_Set_Recorder_Submode req = { .wCode = SET_RECORDER_SUBMODE, .wSize = sizeof(req), .wMode = mode };
@@ -1549,11 +1585,26 @@ unsigned int pco_get_possible_binnings(pco_handle pco,
     return PCO_NOERROR;
 }
 
+/**
+ * Check double-image mode availability
+ *
+ * @param pco A #pco_handle.
+ * @return TRUE if double image mode is available
+ * @since 0.3
+ */
 bool pco_is_double_image_mode_available(pco_handle pco)
 {
     return pco->description.wDoubleImageDESC == 1;
 }
 
+/**
+ * Enable or disable double image mode
+ *
+ * @param pco A #pco_handle.
+ * @param on TRUE to enable double image mode or FALSE
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ */
 unsigned int pco_set_double_image_mode(pco_handle pco, bool on)
 {
      SC2_Set_Double_Image_Mode req = { .wCode = SET_DOUBLE_IMAGE_MODE, .wMode = on ? 1 : 0, .wSize = sizeof(req) };
@@ -1561,6 +1612,14 @@ unsigned int pco_set_double_image_mode(pco_handle pco, bool on)
      return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
+/**
+ * Read double image mode status
+ *
+ * @param pco A #pco_handle.
+ * @param on Location to store status
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ */
 unsigned int pco_get_double_image_mode(pco_handle pco, bool *on)
 {
     SC2_Double_Image_Mode_Response resp;
@@ -1571,6 +1630,14 @@ unsigned int pco_get_double_image_mode(pco_handle pco, bool *on)
     return err;
 }
 
+/**
+ * Enable or disable offset mode
+ *
+ * @param pco A #pco_handle.
+ * @param on TRUE to enable offset mode or FALSE
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ */
 unsigned int pco_set_offset_mode(pco_handle pco, bool on)
 {
     /* Yes, indeed. 0 means AUTO and 1 means OFF */
@@ -1579,6 +1646,14 @@ unsigned int pco_set_offset_mode(pco_handle pco, bool on)
      return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
+/**
+ * Read offset mode status
+ *
+ * @param pco A #pco_handle.
+ * @param on Location to store status
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ */
 unsigned int pco_get_offset_mode(pco_handle pco, bool *on)
 {
     SC2_Offset_Mode_Response resp;
@@ -1610,6 +1685,15 @@ unsigned int pco_set_hotpixel_correction(pco_handle pco, uint32_t mode)
     return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
 }
 
+/**
+ * Read noise filter mode
+ *
+ * @param pco A #pco_handle.
+ * @param mode Location to store mode (NOISE_FILTER_MODE_OFF,
+ * NOISE_FILTER_MODE_ON).
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ */
 unsigned int pco_get_noise_filter_mode(pco_handle pco, uint16_t *mode)
 {
     SC2_Noise_Filter_Mode_Response resp;
@@ -1620,6 +1704,15 @@ unsigned int pco_get_noise_filter_mode(pco_handle pco, uint16_t *mode)
     return err;
 }
 
+/**
+ * Set noise filter mode
+ *
+ * @param pco A #pco_handle.
+ * @param mode Noise filter mode (NOISE_FILTER_MODE_OFF,
+ * NOISE_FILTER_MODE_ON).
+ * @return Error code or PCO_NOERROR.
+ * @since 0.3
+ */
 unsigned int pco_set_noise_filter_mode(pco_handle pco, uint16_t mode)
 {
     SC2_Set_Noise_Filter_Mode req = { .wCode = SET_NOISE_FILTER_MODE, .wSize = sizeof(req), .wMode = mode };
