@@ -342,6 +342,8 @@ int main(int argc, char const* argv[])
     CHECK_PCO(pco_get_resolution(pco, &width_std, &height_std, &width_ex, &height_ex));
     printf(" Maximum resolution: %ix%i (standard), %ix%i (extended)\n", width_std, height_std, width_ex, height_ex);
 
+    CHECK_PCO(pco_set_binning(pco, 1, 1));
+
     uint16_t roi_window[4] = {1, 1, width_std, height_std};
     CHECK_PCO(pco_set_roi(pco, roi_window));
     CHECK_PCO(pco_get_roi(pco, roi_window));
