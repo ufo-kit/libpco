@@ -629,6 +629,7 @@ static unsigned int pco_set_rec_state(pco_handle pco, uint16_t state)
 unsigned int pco_get_name(pco_handle pco, char **name)
 {
     SC2_Camera_Name_Response resp;
+    printf("Going to read name\n");
     unsigned int err = pco_read_property(pco, GET_CAMERA_NAME, &resp, sizeof(resp));
     if (err == PCO_NOERROR) {
         char *s = (char *) malloc(40);
@@ -1523,8 +1524,16 @@ unsigned int pco_set_binning(pco_handle pco, uint16_t horizontal, uint16_t verti
         .wCode = SET_BINNING, .wSize = sizeof(req),
         .wBinningx = horizontal, .wBinningy = vertical
     };
+
     SC2_Binning_Response resp;
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    unsigned int err = pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+
+    /*
+     * For no apparent reason, communication stops after setting the binning.
+     * Similar to pco_set_timebase() we have to reset the CameraLink connection.
+     */
+    pco_reset_serial(pco);
+    return err;
 }
 
 /**
