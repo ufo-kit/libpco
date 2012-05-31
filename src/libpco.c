@@ -919,6 +919,18 @@ unsigned int pco_get_adc_mode(pco_handle pco, pco_adc_mode *mode)
 }
 
 /**
+ * Get maximum number of ADCs
+ *
+ * @param pco A #pco_handle.
+ * @return The number of ADCs that can be set with pco_set_adc_mode().
+ * @since 0.3
+ */
+unsigned int pco_get_maximum_number_of_adcs(pco_handle pco)
+{
+    return pco->description.wNumADCsDESC;
+}
+
+/**
  * Read current pixel rate.
  * @param pco A #pco_handle.
  * @param rate Current pixel rate.

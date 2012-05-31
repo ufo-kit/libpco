@@ -26,6 +26,7 @@ Changes in libpco 0.3.0
     - pco_get_possible_binnings()
     - pco_set_adc_mode()
     - pco_get_adc_mode()
+    - pco_get_maximum_number_of_adcs();
     - pco_start_recording()
     - pco_stop_recording()
     - pco_is_recording()
