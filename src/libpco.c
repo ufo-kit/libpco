@@ -894,7 +894,7 @@ unsigned int pco_get_available_pixelrates(pco_handle pco, uint32_t rates[4], int
 unsigned int pco_set_adc_mode(pco_handle pco, pco_adc_mode mode)
 {
     SC2_Set_ADC_Operation req = {
-        .wCode = GET_ADC_OPERATION, .wSize = sizeof(req),
+        .wCode = SET_ADC_OPERATION, .wSize = sizeof(req),
         .wMode = (uint16_t) mode
     };
     SC2_ADC_Operation_Response resp;
