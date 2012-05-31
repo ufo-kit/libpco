@@ -837,7 +837,7 @@ unsigned int pco_set_cooling_temperature(pco_handle pco, int16_t temperature)
 unsigned int pco_get_cooling_temperature(pco_handle pco, int16_t *temperature)
 {
     SC2_Cooling_Setpoint_Response resp;
-    unsigned int err = pco_read_property(pco, GET_CAMERA_NAME, &resp, sizeof(resp));
+    unsigned int err = pco_read_property(pco, GET_COOLING_SETPOINT_TEMPERATURE, &resp, sizeof(resp));
     if (err == PCO_NOERROR)
         *temperature = resp.sTemp; 
     return err;
