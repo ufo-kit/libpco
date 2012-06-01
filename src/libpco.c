@@ -964,7 +964,10 @@ unsigned int pco_set_pixelrate(pco_handle pco, uint32_t rate)
 {
     SC2_Set_Pixelrate req = { .wCode = SET_PIXELRATE, .wSize = sizeof(req), .dwPixelrate = rate };
     SC2_Pixelrate_Response resp;
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    unsigned int err = pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    if (err == PCO_NOERROR)
+        pco_reset_serial(pco);
+    return err;
 }
 
 /**
