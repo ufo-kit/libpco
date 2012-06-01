@@ -879,7 +879,7 @@ unsigned int pco_get_available_pixelrates(pco_handle pco, uint32_t rates[4], int
         if (pco->description.dwPixelRateDESC[i] > 0)
             rates[j++] = pco->description.dwPixelRateDESC[i];
 
-    *num_rates = j-1;
+    *num_rates = j;
     return PCO_NOERROR;
 }
 
