@@ -306,9 +306,10 @@ static uint16_t pco_msb_pos(uint16_t x)
 
 static void pco_fill_binning_array(uint16_t *a, unsigned int n, int is_linear)
 {
-    if (is_linear)
-        for (int i = 1; i < n + 1; i++)
-            a[i] = i;
+    if (is_linear) {
+        for (int i = 0; i < n; i++)
+            a[i] = i + 1;
+    }
     else  {
         for (int i = 0, j = 1; i < n; i++, j *= 2)
             a[i] = j;
