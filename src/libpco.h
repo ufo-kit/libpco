@@ -95,6 +95,7 @@ unsigned int pco_set_bit_alignment(pco_handle pco, bool msb_aligned);
 unsigned int pco_get_num_images(pco_handle pco, uint16_t segment, uint32_t *num_images);
 unsigned int pco_force_trigger(pco_handle pco, uint32_t *success);
 unsigned int pco_set_timestamp_mode(pco_handle pco, uint16_t mode);
+unsigned int pco_get_timestamp_mode(pco_handle pco, uint16_t *mode);
 unsigned int pco_set_timebase(pco_handle pco, uint16_t delay, uint16_t expos);
 unsigned int pco_get_timebase(pco_handle pco, uint16_t *delay, uint16_t *expos);
 unsigned int pco_get_delay_time(pco_handle pco, uint32_t *delay);

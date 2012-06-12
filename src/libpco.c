@@ -1320,6 +1320,22 @@ unsigned int pco_set_timestamp_mode(pco_handle pco, uint16_t mode)
 }
 
 /**
+ * Get timestamp mode. 
+ *
+ * @param pco A #pco_handle.
+ * @param mode Locaton for the timestamp mode
+ * @return Error code or PCO_NOERROR.
+ */
+unsigned int pco_get_timestamp_mode(pco_handle pco, uint16_t *mode)
+{
+    SC2_Timestamp_Mode_Response resp;
+    unsigned int err = pco_read_property(pco, GET_TIMESTAMP_MODE, &resp, sizeof(resp));
+    if (err == PCO_NOERROR)
+        *mode = resp.wMode;
+    return err;
+}
+
+/**
  * Set time scale of delay and exposure. Parameter values for delay and exposure can be:
  *    - TIMEBASE_NS
  *    - TIMEBASE_US
