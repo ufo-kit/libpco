@@ -776,7 +776,7 @@ unsigned int pco_set_sensor_format(pco_handle pco, uint16_t format)
  * @note If a specific temperature sensor is not available, the values are
  * undefined.
  */
-unsigned int pco_get_temperature(pco_handle pco, uint32_t *ccd, uint32_t *camera, uint32_t *power)
+unsigned int pco_get_temperature(pco_handle pco, int32_t *ccd, int32_t *camera, int32_t *power)
 {
     SC2_Temperature_Response resp;
     unsigned int err = pco_read_property(pco, GET_TEMPERATURE, &resp, sizeof(resp));

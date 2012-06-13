@@ -137,7 +137,7 @@ static void print_scan_mode(pco_handle pco)
 
 static void print_temperature(pco_handle pco)
 {
-    uint32_t temp_ccd, temp_cam, temp_power;
+    int32_t temp_ccd, temp_cam, temp_power;
     if (pco_get_temperature(pco, &temp_ccd, &temp_cam, &temp_power) == PCO_NOERROR) {
         printf(" CCD temperature: %1.2f°C\n", (float) temp_ccd / 10.0f);
         printf(" Camera temperature: %.2f°C\n", (float) temp_cam);

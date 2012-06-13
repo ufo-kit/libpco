@@ -54,6 +54,10 @@ Changes in libpco 0.3.0
       pco_stop_recording())
     - pco_get_rec_state() (superseded by pco_is_recording())
 
+- Changed symbols:
+    - pco_get_temperature() takes int32_t instead of uint32_t to accomodate for
+      negative temperatures
+
 
 Changes in libpco 0.2.0
 -----------------------
