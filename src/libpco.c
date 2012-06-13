@@ -284,7 +284,6 @@ static uint32_t pco_test_checksum(unsigned char *buffer, int *size)
 
 static void pco_msleep(int time)
 {
-    int ret;
     fd_set rfds;
     struct timeval tv;
 
@@ -293,7 +292,7 @@ static void pco_msleep(int time)
 
     tv.tv_sec = time / 1000;
     tv.tv_usec = (time % 1000) / 1000;
-    ret = select(0, NULL, NULL, NULL, &tv);
+    select(0, NULL, NULL, NULL, &tv);
 }
 
 static uint16_t pco_msb_pos(uint16_t x)
@@ -386,10 +385,10 @@ static unsigned int pco_scan_and_set_baud_rate(pco_handle pco)
     SC2_Camera_Type_Response resp;
     com.wCode = GET_CAMERA_TYPE;
     com.wSize = sizeof(SC2_Simple_Telegram);
-    int idx = 0, cl_err;
+    int idx = 0;
 
     while ((err != PCO_NOERROR) && (baudrates[idx][0] != 0)) {
-        cl_err = clSetBaudRate(pco->serial_ref, baudrates[idx][0]);
+        clSetBaudRate(pco->serial_ref, baudrates[idx][0]);
         pco_msleep(300);
         err = pco_control_command(pco, &com, sizeof(com), &resp, sizeof(SC2_Camera_Type_Response));
         if (err != PCO_NOERROR)
