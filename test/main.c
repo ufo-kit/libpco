@@ -436,8 +436,8 @@ int main(int argc, char const* argv[])
         if (cam_type == CAMERATYPE_PCO_EDGE) {
             uint16_t *image = (uint16_t *) malloc(width*height*2);
             pco_get_reorder_func(pco)(image, frame, width, height);
-            free(image);
             fwrite(image, width * height * 2, 1, fp);
+            free(image);
         }
         else
             fwrite(frame, width * height * 2, 1, fp);
