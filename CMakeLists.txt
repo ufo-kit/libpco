@@ -16,6 +16,8 @@ set(PACKAGE_BUGREPORT "http://ufo.kit.edu/ufo/newticket")
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
 
+set(LIBPCO_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR})
+
 # --- Find required packages ------------------------------------------------
 find_package(ClSerMe4 REQUIRED)
 find_package(FgLib5)
@@ -55,6 +57,7 @@ set(CPACK_PACKAGE_NAME "libpco")
 # --- Distro specific
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "libc6 (>= 2.3.6), libgcc1 (>= 1:4.1)")
 
+set(CPACK_SET_DESTDIR ON)
 set(CPACK_PACKAGE_CONTACT "Matthias Vogelgesang")
 set(CPACK_PACKAGE_VENDOR "Karlsruhe Institute of Technology/IPE")
 set(CPACK_PACKAGE_VERSION_MAJOR "${LIBPCO_VERSION_MAJOR}")
@@ -68,6 +71,9 @@ set(CPACK_SOURCE_GENERATOR "TGZ")
 set(CPACK_SOURCE_IGNORE_FILES "tags" ".bzr")
 set(CPACK_SOURCE_PACKAGE_FILE_NAME "libpco-${LIBPCO_VERSION_STRING}" CACHE INTERNAL "tarball basename")
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}-${CMAKE_SYSTEM_PROCESSOR}")
+
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/libpco.spec.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/libpco.spec" @ONLY IMMEDIATE)
 
 include(CPack)
 
