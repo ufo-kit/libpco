@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.6)
 
 set(TARNAME "libpco")
 set(LIBPCO_VERSION_MAJOR "0")
-set(LIBPCO_VERSION_MINOR "3")
+set(LIBPCO_VERSION_MINOR "4")
 set(LIBPCO_VERSION_PATCH "0")
 set(LIBPCO_VERSION_STRING "${LIBPCO_VERSION_MAJOR}.${LIBPCO_VERSION_MINOR}.${LIBPCO_VERSION_PATCH}")
 
@@ -31,6 +31,7 @@ add_definitions("--std=c99 -Wall -fpack-struct")
 
 # --- Build library and install ---------------------------------------------
 add_library(pco SHARED src/libpco.c)
+target_link_libraries(pco ${FGLIB5_LIBRARY} ${CLSERME4_LIBRARY})
 set(LIB_INSTALL_DIR "lib${LIB_SUFFIX}")
 
 set_target_properties(pco PROPERTIES
