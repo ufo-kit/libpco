@@ -31,6 +31,7 @@ add_definitions("--std=c99 -Wall -fpack-struct")
 
 # --- Build library and install ---------------------------------------------
 add_library(pco SHARED src/libpco.c)
+target_link_libraries(pco ${FGLIB5_LIBRARY} ${CLSERME4_LIBRARY})
 set(LIB_INSTALL_DIR "lib${LIB_SUFFIX}")
 
 set_target_properties(pco PROPERTIES
@@ -66,7 +67,7 @@ set(CPACK_PACKAGE_VERSION_PATCH "${LIBPCO_VERSION_PATCH}")
 set(VERSION "${LIBPCO_VERSION_STRING}")
 
 set(CPACK_GENERATOR "TGZ;DEB;RPM;")
-set(CPACK_PACKAGE_RELEASE 1)
+set(CPACK_PACKAGE_RELEASE 2)
 set(CPACK_SOURCE_GENERATOR "TGZ")
 set(CPACK_SOURCE_IGNORE_FILES "tags" ".bzr")
 set(CPACK_SOURCE_PACKAGE_FILE_NAME "libpco-${LIBPCO_VERSION_STRING}" CACHE INTERNAL "tarball basename")
