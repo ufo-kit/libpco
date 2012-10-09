@@ -72,7 +72,7 @@ typedef struct {
 static pco_cl_map_entry pco_cl_map[] = { 
     { CAMERATYPE_PCO_EDGE,       "libFullAreaGray8.so",  FG_CL_8BIT_FULL_10,        FG_GRAY },
     { CAMERATYPE_PCO4000,        "libDualAreaGray16.so", FG_CL_SINGLETAP_16_BIT,    FG_GRAY16 },
-    { CAMERATYPE_PCO_DIMAX_STD,  "libFullAreaGray16.so", FG_CL_SINGLETAP_8_BIT,     FG_GRAY16 },
+    { CAMERATYPE_PCO_DIMAX_STD,  "libDualAreaGray16.so", FG_CL_SINGLETAP_8_BIT,     FG_GRAY16 },
     { 0, NULL, 0, 0}
 };
 
