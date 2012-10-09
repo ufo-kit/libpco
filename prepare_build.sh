@@ -1,3 +1,6 @@
+wget http://www.silicon-software.de/download/systemsoftware/Linux/siso-rt5-5.1.2-1.x86_64.rpm
+wget http://www.silicon-software.de/download/systemsoftware/Linux/siso-rt5-devel-5.1.2-1.x86_64.rpm
+
 rpm --quiet -q siso-rt5-devel
 if [ $? -eq 0 ] ; then 
   sudo rpm -e siso-rt5-devel
