@@ -731,7 +731,7 @@ unsigned int pco_reset(pco_handle pco)
  */
 
 /**
- * Read currently set sensor format.
+ * Get format of sensor.
  *
  * @param pco A #pco_handle.
  * @param format Location for format of the sensor (SENSORFORMAT_EXTENDED,
@@ -749,11 +749,13 @@ unsigned int pco_get_sensor_format(pco_handle pco, uint16_t *format)
 }
 
 /**
- * Set sensor format.
+ * Set format of sensor.
  *
  * @param pco A #pco_handle.
- * @param format Format of the sensor (SENSORFORMAT_EXTENDED,
- * SENSORFORMAT_STANDARD)
+ * @param format Format of the sensor:
+ *     - SENSORFORMAT_EXTENDED: use all pixels inclusiding effective, dark,
+ *       reference and dummy.
+ *     - SENSORFORMAT_STANDARD: use only effective pixels.
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
@@ -828,6 +830,7 @@ unsigned int pco_set_cooling_temperature(pco_handle pco, int16_t temperature)
 
 /**
  * Get cooling temperature.
+ *
  * @param pco A #pco_handle.
  * @param temperature Currently set target temperature of the CCD sensor.
  * @return Error code or PCO_NOERROR.
@@ -847,10 +850,10 @@ unsigned int pco_get_cooling_temperature(pco_handle pco, int16_t *temperature)
  * Read camera resolution.
  *
  * @param pco A #pco_handle.
- * @param width_std Standard pixel width.
- * @param height_std Standard pixel height.
- * @param width_ex Extended pixel width.
- * @param height_ex Extended pixel height.
+ * @param width_std Standard width of sensor matrix.
+ * @param height_std Standard height of sensor matrix.
+ * @param width_ex Extended width of sensor matrix.
+ * @param height_ex Extended height of sensor matrix.
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  */
@@ -884,7 +887,10 @@ unsigned int pco_get_available_pixelrates(pco_handle pco, uint32_t rates[4], int
 }
 
 /**
- * Set ADC read out mode.
+ * Set analog-digital-converter (ADC) operation mode for reading the image
+ * sensor data. Pixel data can be read out using one ADC (better linearity) or
+ * in parallel using more ADCs (faster). Only available for some camera models
+ * (defined in the camera description).
  *
  * @param pco A #pco_handle.
  * @param mode Operational mode of the ADCs
@@ -902,7 +908,7 @@ unsigned int pco_set_adc_mode(pco_handle pco, pco_adc_mode mode)
 }
 
 /**
- * Get ADC read out mode.
+ * Get ADC operation mode.
  *
  * @param pco A #pco_handle.
  * @param mode Location for the operational mode of the ADCs
@@ -932,6 +938,7 @@ unsigned int pco_get_maximum_number_of_adcs(pco_handle pco)
 
 /**
  * Read current pixel rate.
+ *
  * @param pco A #pco_handle.
  * @param rate Current pixel rate.
  * @return Error code or PCO_NOERROR.
@@ -949,6 +956,7 @@ unsigned int pco_get_pixelrate(pco_handle pco, uint32_t *rate)
 
 /**
  * Set pixel rate.
+ *
  * @param pco A #pco_handle.
  * @param rate Any of
  *    - PIXELRATE_10MHZ
@@ -1074,6 +1082,7 @@ unsigned int pco_get_scan_mode(pco_handle pco, uint32_t *mode)
 
 /**
  * Set trigger mode.
+ *
  * @param pco A #pco_handle.
  * @param mode Trigger mode:
  *   - TRIGGER_MODE_AUTO_TRIGGER
@@ -1175,7 +1184,19 @@ unsigned int pco_get_storage_mode(pco_handle pco, uint16_t *mode)
  * Set storage mode.
  *
  * @param pco A #pco_handle.
- * @param mode STORAGE_MODE_RECORDER or STORAGE_MODE_FIFO_BUFFER.
+ * @param mode Any of:
+ *     - STORAGE_MODE_RECORDER: 
+ *         - images are recorded and stored within the camRam
+ *         - “live view” transfers the most recent image to the PC
+ *         - indexed or total readout of images after the recording has been 
+ *            stopped
+ *     - STORAGE_MODE_FIFO_BUFFER:
+ *         - all images taken are transferred to the PC in chronological order
+ *         - camRAM is used as huge FIFO buffer to bypass short bottlenecks in 
+ *           data transmission. If buffer overflows the oldest images are 
+ *           overwritten. In FIFO buffer mode images are send directly to the
+ *           PC interface like a continuous data stream. Synchronization is
+ *           done with the interface.
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  */
@@ -1187,7 +1208,7 @@ unsigned int pco_set_storage_mode(pco_handle pco, uint16_t mode)
 }
 
 /**
- * Read currently set record mode
+ * Read currently set record mode.
  *
  * @param pco A #pco_handle.
  * @param mode Location for the mode (RECORDER_SUBMODE_RINGBUFFER,
@@ -1205,11 +1226,15 @@ unsigned int pco_get_record_mode(pco_handle pco, uint16_t *mode)
 }
 
 /**
- * Set record mode
+ * Set record mode.
  *
  * @param pco A #pco_handle.
- * @param mode Record mode (RECORDER_SUBMODE_RINGBUFFER,
- * RECORDER_SUBMODE_SEQUENCE)
+ * @param mode Any of:
+ *     - RECORDER_SUBMODE_RINGBUFFER: camera records continuously into ring 
+ *       buffer. If the allocated buffer is full, the oldest images are 
+         overwritten.
+ *     - RECORDER_SUBMODE_SEQUENCE: recording is stopped when the allocated
+         buffer is full
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
@@ -1239,6 +1264,11 @@ unsigned int pco_is_recording(pco_handle pco, bool *is_recording)
 
 /**
  * Start recording.
+ * The recording command controls the status of the camera. If the recording
+ * state is [run], images can be released by exposure trigger and acquire
+ * enable. If the recording state is [stop] all image readout or exposure
+ * sequences are stopped and the sensors are running in a special idle mode to
+ * prevent dark charge accumulation.
  *
  * @param pco A #pco_handle.
  * @return Error code or PCO_NOERROR.
@@ -1279,11 +1309,16 @@ unsigned int pco_get_acquire_mode(pco_handle pco, uint16_t *mode)
 }
 
 /**
- * Set image acquisition mode.
+ * Configure the mode of the (acq enbl) camera input.
  *
  * @param pco A #pco_handle.
- * @param mode ACQUIRE_MODE_AUTO, ACQUIRE_MODE_EXTERNAL (acq enable signal) or
- * ACQUIRE_MODE_EXTERNAL_FRAME_TRIGGER.
+ * @param mode Any of:
+ *     - ACQUIRE_MODE_AUTO: the external control input (acq enbl) is ignored
+ *     - ACQUIRE_MODE_EXTERNAL: if the external control input (acq enbl) is
+ *       TRUE, then exposure triggers are accepted and images are taken. If
+ *       this signal is FALSE, then all exposure triggers are ignored and the
+ *       sensor readout is stopped.
+ *     - ACQUIRE_MODE_EXTERNAL_FRAME_TRIGGER: TODO: what does this do?
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  */
@@ -1339,6 +1374,7 @@ unsigned int pco_get_timestamp_mode(pco_handle pco, uint16_t *mode)
  *    - TIMEBASE_NS
  *    - TIMEBASE_US
  *    - TIMEBASE_MS
+ *
  * @param pco A #pco_handle.
  * @param delay Scale of delay.
  * @param exposure Scale of exposure.
@@ -1499,7 +1535,9 @@ unsigned int pco_set_roi(pco_handle pco, uint16_t *window)
 }
 
 /**
- * Read current region of interest window.
+ * Get current region of interest window. The ROI is equal to or smaller than
+ * the absolute image area which is defined by the settings of *format* and
+ * *binning*.
  *
  * @param pco A #pco_handle.
  * @param window Four-element array 
@@ -1652,7 +1690,9 @@ unsigned int pco_set_double_image_mode(pco_handle pco, bool on)
 }
 
 /**
- * Read double image mode status
+ * Read double image mode status. Some cameras (defined in the camera
+ * description) allow to make a double image with two exposures separated by a
+ * short interleaving time.
  *
  * @param pco A #pco_handle.
  * @param on Location to store status
@@ -1801,7 +1841,12 @@ unsigned int pco_get_num_images(pco_handle pco, uint16_t segment, uint32_t *num_
 }
 
 /**
- * Trigger image request and transfer.
+ * Trigger image request and transfer. Start an image transfer, while
+ * recording state is set to [on]. If storage mode is set to [recorder], the
+ * last aquired image is read. If storage mode is set to [FIFO buffer mode]
+ * the images are read in the order in which they have been written into the
+ * fifo buffer.
+ *
  * @param pco A #pco_handle
  * @return Error code or PCO_NOERROR.
  * @since 0.2
@@ -1814,9 +1859,10 @@ unsigned int pco_request_image(pco_handle pco)
 }
 
 /**
- * Read images from a segment. This method is only useful for cameras with
- * on-board memory that can be read out after recording (e.g. pco.dimax and
- * pco.4000).
+ * Read images from a segment of the camera RAM. The command is only
+ * valid if storage mode is set to [recorder] and recording to the camRAM
+ * segment is stopped. This method is only useful for cameras with
+ * on-board memory that can be read out after recording.
  *
  * @param pco A #pco_handle
  * @param segment Number of the segment from where to read. 
@@ -1960,6 +2006,7 @@ unsigned int pco_get_actual_size(pco_handle pco, uint32_t *width, uint32_t *heig
 
 /**
  * Return the currently used re-order function.
+ *
  * @param pco A #pco_handle
  * @return Pointer to a #pco_reorder_image_t function.
  */
@@ -1970,6 +2017,7 @@ pco_reorder_image_t pco_get_reorder_func(pco_handle pco)
 
 /**
  * Initialize a PCO camera.
+ *
  * @return An initialized #pco_handle or NULL.
  */
 pco_handle pco_init(void)
@@ -2035,6 +2083,7 @@ no_pco:
 
 /**
  * Close pco device.
+ *
  * @param pco A #pco_handle.
  */
 void pco_destroy(pco_handle pco)
