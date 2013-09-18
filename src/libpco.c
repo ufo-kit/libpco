@@ -1514,6 +1514,35 @@ unsigned int pco_get_exposure_range(pco_handle pco, uint32_t *min_ns, uint32_t *
     return PCO_NOERROR;
 }
 
+unsigned int pco_set_framerate(pco_handle pco, uint32_t framerate_mhz, uint32_t exposure_ns, bool framerate_priority)
+{
+    SC2_Set_Framerate_Response resp;
+    SC2_Set_Framerate req = {
+        .wCode = SET_FRAMERATE, .wSize = sizeof(req),
+        .dwFramerate = framerate_mhz,
+        .dwExposure = exposure_ns,
+        .wMode = framerate_priority ? SET_FRAMERATE_MODE_FRAMERATE_HAS_PRIORITY :
+                                      SET_FRAMERATE_MODE_EXPTIME_HAS_PRIORITY
+    };
+
+    return pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
+}
+
+unsigned int pco_get_framerate(pco_handle pco, uint32_t *framerate_mhz, uint32_t *exposure_ns)
+{
+    SC2_Get_Framerate_Response resp;
+    unsigned int err = PCO_NOERROR;
+
+    err = pco_read_property (pco, GET_FRAMERATE, &resp, sizeof(resp));
+
+    if (err == PCO_NOERROR) {
+        *framerate_mhz = resp.dwFramerate;
+        *exposure_ns = resp.dwExposure;
+    }
+
+    return err;
+}
+
 /**
  * Set the region of interest window.
  *

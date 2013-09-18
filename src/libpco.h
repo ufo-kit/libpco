@@ -108,6 +108,8 @@ unsigned int pco_get_trigger_mode(pco_handle pco, uint16_t *mode);
 unsigned int pco_set_trigger_mode(pco_handle pco, uint16_t mode);
 unsigned int pco_set_auto_transfer(pco_handle pco, int transfer);
 unsigned int pco_get_auto_transfer(pco_handle pco, int *transfer);
+unsigned int pco_set_framerate(pco_handle pco, uint32_t framerate_mhz, uint32_t exposure_ns, bool framerate_priority);
+unsigned int pco_get_framerate(pco_handle pco, uint32_t *framerate_mhz, uint32_t *exposure_ns);
 
 unsigned int pco_get_storage_mode(pco_handle pco, uint16_t *mode);
 unsigned int pco_set_storage_mode(pco_handle pco, uint16_t mode);

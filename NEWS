@@ -4,8 +4,10 @@ Changes in libpco 0.4.0 (Codename: "Volker, what have you done?")
 - Fix many, many bugs
 
 - New symbols:
-    - pco_get_timestamp_mode()
+    - pco_get_timestamp_mode
     - pco_get_maximum_number_of_adcs
+    - pco_set_framerate
+    - pco_get_framerate
 
 Changes in libpco 0.3.0
 -----------------------

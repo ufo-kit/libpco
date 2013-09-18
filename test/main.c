@@ -147,13 +147,21 @@ static void print_temperature(pco_handle pco)
 
 static void print_delay_exposure(pco_handle pco)
 {
-    uint32_t delay = 0, exposure = 5000;
-    CHECK_PCO(pco_set_delay_time(pco, delay));
-    CHECK_PCO(pco_set_exposure_time(pco, exposure));
-    CHECK_PCO(pco_get_delay_time(pco, &delay));
-    CHECK_PCO(pco_get_exposure_time(pco, &exposure));
-    printf(" Delay: %u µs\n", delay);
-    printf(" Exposure: %u µs\n", exposure);
+    /* uint32_t delay = 0, exposure = 5000; */
+    /* CHECK_PCO(pco_set_delay_time(pco, delay)); */
+    /* CHECK_PCO(pco_set_exposure_time(pco, exposure)); */
+    /* CHECK_PCO(pco_get_delay_time(pco, &delay)); */
+    /* CHECK_PCO(pco_get_exposure_time(pco, &exposure)); */
+    /* printf(" Delay: %u µs\n", delay); */
+    /* printf(" Exposure: %u µs\n", exposure); */
+    uint32_t framerate = 10000;     /* 10 frames/s */
+    uint32_t exposure = 5000000;
+
+    CHECK_PCO (pco_set_framerate (pco, framerate, exposure, true));
+    CHECK_PCO (pco_get_framerate (pco, &framerate, &exposure));
+
+    printf (" Framerate: %u f/s\n", framerate / 1000);
+    printf (" Exposure: %u µs\n", exposure / 1000);
 }
 
 static void print_pixel_rates(pco_handle pco)
