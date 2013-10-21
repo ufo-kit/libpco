@@ -2071,6 +2071,9 @@ pco_handle pco_init(void)
         goto no_pco;
     }
 
+    if (pco->num_ports == 0)
+        goto no_pco;
+
     if (pco->num_ports > 4)
         pco->num_ports = 4;
 
