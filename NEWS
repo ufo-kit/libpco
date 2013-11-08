@@ -1,3 +1,20 @@
+Changelog
+=========
+
+Changes in libpco 1.0
+---------------------
+
+Released on November 8th 2013.
+
+Note: The Git repository has been re-written to remove RPMs!
+
+- Use ConfigurePaths for correct UNIX-like install locations
+- Major break: SO version corresponds now with major version. It is effectively
+  now at 1.
+- Return NULL if no port is connected to a camera
+- Add pco_get/set_framerate
+
+
 Changes in libpco 0.4.1
 -----------------------
 
@@ -14,6 +31,7 @@ Changes in libpco 0.4.0 (Codename: "Volker, what have you done?")
     - pco_get_maximum_number_of_adcs
     - pco_set_framerate
     - pco_get_framerate
+
 
 Changes in libpco 0.3.0
 -----------------------
