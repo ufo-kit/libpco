@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 2.6)
+project(libpco C)
 
 set(TARNAME "libpco")
 set(LIBPCO_VERSION_MAJOR "0")
