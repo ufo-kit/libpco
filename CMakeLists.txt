@@ -3,6 +3,9 @@ project(libpco C)
 
 #{{{ CMake
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
+
+include(ConfigurePaths)
+configure_paths(LIBPCO)
 #}}}
 #{{{ Metadata
 set(TARNAME "libpco")
@@ -24,11 +27,6 @@ include_directories(${CMAKE_SOURCE_DIR}/src
 
 add_definitions("--std=c99 -Wall -fpack-struct")
 
-set(PCO_PKG_PREFIX ${CMAKE_INSTALL_PREFIX})
-set(PCO_PKG_EXEC_PREFIX "${PCO_PKG_PREFIX}/bin")
-set(PCO_PKG_LIBDIR "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
-set(PCO_PKG_INCLUDEDIR "${PCO_PKG_PREFIX}/include")
-
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/pco.pc.in"
                "${CMAKE_CURRENT_BINARY_DIR}/pco.pc" @ONLY IMMEDIATE)
 
@@ -36,24 +34,23 @@ configure_file(${CMAKE_SOURCE_DIR}/src/config.h.in
                ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 add_library(pco SHARED src/libpco.c)
-target_link_libraries(pco ${FGLIB5_LIBRARY} ${CLSERME4_LIBRARY})
-set(LIB_INSTALL_DIR "lib${LIB_SUFFIX}")
+
+target_link_libraries(pco
+                      ${FGLIB5_LIBRARY}
+                      ${CLSERME4_LIBRARY})
 
 set_target_properties(pco PROPERTIES
                       VERSION "${LIBPCO_VERSION_MAJOR}.${LIBPCO_VERSION_MINOR}"
                       SOVERSION ${LIBPCO_VERSION_MAJOR})
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/pco.pc DESTINATION ${LIB_INSTALL_DIR}/pkgconfig)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/pco.pc
+        DESTINATION ${LIBPCO_PKGCONFIGDIR})
 
 install(TARGETS pco
-        LIBRARY DESTINATION ${LIB_INSTALL_DIR})
+        LIBRARY DESTINATION ${LIBPCO_LIBDIR})
 
-install(FILES
-        src/libpco.h 
-        src/sc2_defs.h
-        src/PCO_err.h
-    
-        DESTINATION include/libpco)
+install(FILES src/libpco.h src/sc2_defs.h src/PCO_err.h
+        DESTINATION ${LIBPCO_INCLUDEDIR}/libpco)
 
 #{{{ Test binary
 if (FGLIB5_FOUND)

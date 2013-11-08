@@ -1,10 +1,10 @@
-prefix=@PCO_PKG_PREFIX@
-exec_prefix=@PCO_PKG_EXEC_PREFIX@
-libdir=@PCO_PKG_LIBDIR@
-includedir=@PCO_PKG_INCLUDEDIR@
+prefix=@LIBPCO_PREFIX@
+exec_prefix=@LIBPCO_EPREFIX@
+libdir=@LIBPCO_LIBDIR@
+includedir=@LIBPCO_INCLUDEDIR@
 
 Name: @TARNAME@
-Description: @PCO_DESCRIPTION_SUMMARY@
-Version: @LIBPCO_ABI_VERSION@
+Description: @LIBPCO_DESCRIPTION@
+Version: @LIBPCO_VERSION_STRING@
 Libs: -L${libdir} -lpco
 Cflags: -I${includedir}
