@@ -9,9 +9,9 @@ configure_paths(LIBPCO)
 #}}}
 #{{{ Metadata
 set(TARNAME "libpco")
-set(LIBPCO_VERSION_MAJOR "0")
-set(LIBPCO_VERSION_MINOR "5")
-set(LIBPCO_VERSION_PATCH "0dev")
+set(LIBPCO_VERSION_MAJOR "1")
+set(LIBPCO_VERSION_MINOR "0")
+set(LIBPCO_VERSION_PATCH "0")
 set(LIBPCO_VERSION_STRING "${LIBPCO_VERSION_MAJOR}.${LIBPCO_VERSION_MINOR}.${LIBPCO_VERSION_PATCH}")
 set(LIBPCO_DESCRIPTION "User-space device access to pco cameras")
 #}}}
