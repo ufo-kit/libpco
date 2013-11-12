@@ -4,12 +4,12 @@ Summary:        @CPACK_PACKAGE_DESCRIPTION@
 Name:           @CPACK_PACKAGE_NAME@
 Version:        @VERSION@
 Release:        @CPACK_PACKAGE_RELEASE@
-License:        unknown
+License:        LGPL 2 and proprietary
 Group:          unknown
 Vendor:         @CPACK_PACKAGE_VENDOR@
-Prefix:         @CMAKE_INSTALL_PREFIX@
+Prefix:         @CPACK_PACKAGING_INSTALL_PREFIX@
  
-#p define prefix @CMAKE_INSTALL_PREFIX@
+#p define prefix @CPACK_PACKAGING_INSTALL_PREFIX@
 %define _rpmdir @LIBPCO_BUILD_DIR@/_CPack_Packages/Linux/RPM
 %define _rpmfilename @CPACK_PACKAGE_FILE_NAME@.rpm
 %define _unpackaged_files_terminate_build 0
@@ -46,13 +46,15 @@ mv "@LIBPCO_BUILD_DIR@/_CPack_Packages/Linux/RPM/tmpBBroot" $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root,-)
-@CMAKE_INSTALL_PREFIX@/include/libpco/*.h
-@CMAKE_INSTALL_PREFIX@/@LIB_INSTALL_DIR@/libpco.so.@LIBPCO_ABI_VERSION@
-@CMAKE_INSTALL_PREFIX@/@LIB_INSTALL_DIR@/libpco.so.@LIBPCO_VERSION_MINOR@
-@CMAKE_INSTALL_PREFIX@/@LIB_INSTALL_DIR@/libpco.so
-@CMAKE_INSTALL_PREFIX@/@LIB_INSTALL_DIR@/pkgconfig/pco.pc
+@LIBPCO_INCLUDEDIR@/libpco/*.h
+@LIBPCO_LIBDIR@/libpco.so.@LIBPCO_ABI_VERSION@
+@LIBPCO_LIBDIR@/libpco.so.@LIBPCO_VERSION@
+@LIBPCO_LIBDIR@/libpco.so
+@LIBPCO_PKGCONFIGDIR@/pco.pc
 
 
 %changelog
+* Tue Nov 12 2013 Mihael Koep <koep@softwareschneiderei.de> 1.0.0-1
+- update to libpco 1.0
 * Tue Aug 7 2012 Volker Kaiser <volker.kaiser@softwareschneiderei.de>
 first package release
