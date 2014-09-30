@@ -2034,6 +2034,59 @@ unsigned int pco_get_actual_size(pco_handle pco, uint32_t *width, uint32_t *heig
 }
 
 /**
+ * Get shutter setting for pco.edge cameras.
+ *
+ * @param pco A #pco_handle
+ * @param shutter Location for shutter mode.
+ * @return Error code or PCO_NOERROR
+ */
+unsigned int pco_edge_get_shutter(pco_handle pco, pco_edge_shutter *shutter)
+{
+   unsigned int err = PCO_NOERROR;
+ 
+    SC2_Simple_Telegram req = {
+        .wCode = GET_CAMERA_SETUP,
+        .wSize = sizeof(SC2_Simple_Telegram),
+    };
+    SC2_Get_Camera_Setup_Response resp; 
+
+    err = pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+
+    if (err == PCO_NOERROR)
+        *shutter = resp.dwSetupFlags[0];
+
+    return err;
+}
+
+/**
+ * Set shutter setting for pco.edge cameras.
+ *
+ * @param pco A #pco_handle
+ * @param shutter Shutter mode.
+ * @return Error code or PCO_NOERROR
+ */
+unsigned int pco_edge_set_shutter(pco_handle pco, pco_edge_shutter shutter)
+{
+    unsigned int err = PCO_NOERROR;
+ 
+    SC2_Set_Camera_Setup req = {
+        .wCode = SET_CAMERA_SETUP,
+        .wSize = sizeof(SC2_Set_Camera_Setup),
+        .wType = 0,
+    };
+
+    SC2_Set_Camera_Setup_Response resp; 
+
+    for (int i = 0; i < NUMSETUPFLAGS; i++)
+        req.dwSetupFlags[i] = shutter;
+
+    pco->extra_timeout = 5000;
+    err = pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    pco->extra_timeout = 0;
+    return err;
+}
+
+/**
  * Return the currently used re-order function.
  *
  * @param pco A #pco_handle

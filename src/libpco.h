@@ -45,6 +45,11 @@ typedef enum {
     PCO_PARALLEL_ADC        /**< Fast read out with two ADCs */
 } pco_adc_mode;
 
+typedef enum {
+    PCO_EDGE_ROLLING_SHUTTER = PCO_EDGE_SETUP_ROLLING_SHUTTER,
+    PCO_EDGE_GLOBAL_SHUTTER = PCO_EDGE_SETUP_GLOBAL_SHUTTER
+} pco_edge_shutter;
+
 pco_handle pco_init();
 void pco_destroy(pco_handle pco);
 
@@ -128,6 +133,9 @@ unsigned int pco_get_actual_size(pco_handle pco, uint32_t *width, uint32_t *heig
 unsigned int pco_set_hotpixel_correction(pco_handle pco, uint32_t mode);
 unsigned int pco_get_noise_filter_mode(pco_handle pco, uint16_t *mode);
 unsigned int pco_set_noise_filter_mode(pco_handle pco, uint16_t mode);
+
+unsigned int pco_edge_get_shutter(pco_handle pco, pco_edge_shutter *shutter);
+unsigned int pco_edge_set_shutter(pco_handle pco, pco_edge_shutter shutter);
 
 unsigned int pco_control_command(pco_handle pco, void *buffer_in, uint32_t size_in, void *buffer_out, uint32_t size_out);
 
