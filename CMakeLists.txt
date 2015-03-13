@@ -18,14 +18,15 @@ set(LIBPCO_VERSION "${LIBPCO_VERSION_MAJOR}.${LIBPCO_VERSION_MINOR}")
 set(LIBPCO_DESCRIPTION "User-space device access to pco cameras")
 #}}}
 #{{{ Dependencies
-find_package(ClSerMe4 REQUIRED)
-find_package(FgLib5)
+find_package(ClSerSis REQUIRED)
+find_package(FgLib5 REQUIRED)
 find_package(Doxygen)
 #}}}
 #{{{ Targets
 include_directories(${CMAKE_SOURCE_DIR}/src 
                     ${CMAKE_CURRENT_BINARY_DIR}
-                    ${CLSERME4_INCLUDE_DIR})
+                    ${FgLib5_INCLUDE_DIR}
+                    ${clsersis_INCLUDE_DIR})
 
 add_definitions("--std=c99 -Wall -fpack-struct")
 
@@ -38,8 +39,8 @@ configure_file(${CMAKE_SOURCE_DIR}/src/config.h.in
 add_library(pco SHARED src/libpco.c)
 
 target_link_libraries(pco
-                      ${FGLIB5_LIBRARY}
-                      ${CLSERME4_LIBRARY})
+                      ${FgLib5_LIBRARY}
+                      ${clsersis_LIBRARY})
 
 set_target_properties(pco PROPERTIES
                       VERSION "${LIBPCO_VERSION_MAJOR}.${LIBPCO_VERSION_MINOR}"
