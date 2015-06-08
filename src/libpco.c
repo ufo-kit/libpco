@@ -150,7 +150,6 @@
 
 struct pco_t {
     unsigned int num_ports;
-    unsigned int baud_rate;
 
     /**
      * Pointer to image correction function. This is automatically set to the
@@ -365,12 +364,21 @@ static unsigned int pco_retrieve_cl_config(pco_handle pco)
     return err;
 }
 
+static unsigned int pco_set_baudrate (pco_handle pco, uint32_t baudrate)
+{
+    SC2_Set_CL_Baudrate req = {
+        .wCode = SET_CL_BAUDRATE,
+        .dwBaudrate = baudrate,
+        .wSize = sizeof(req)
+    };
+    SC2_Get_CL_Baudrate_Response resp;
+
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+}
+
 static unsigned int pco_scan_and_set_baud_rate(pco_handle pco)
 {
-    static uint32_t baudrates[9][2] = { 
-        { CL_BAUDRATE_921600, 921600},
-        { CL_BAUDRATE_460800, 460800 },
-        { CL_BAUDRATE_230400, 230400},
+    static uint32_t baudrates[9][2] = {
         { CL_BAUDRATE_115200, 115200 },
         { CL_BAUDRATE_57600, 57600 },
         { CL_BAUDRATE_38400, 38400 },
@@ -387,17 +395,19 @@ static unsigned int pco_scan_and_set_baud_rate(pco_handle pco)
     com.wSize = sizeof(SC2_Simple_Telegram);
     int idx = 0;
 
+    /* Find baudrate at which we can communicate (most likely 9600) */
     while ((err != PCO_NOERROR) && (baudrates[idx][0] != 0)) {
-        clSetBaudRate(pco->serial_ref, baudrates[idx][0]);
-        pco_msleep(300);
+        clSetBaudRate (pco->serial_ref, baudrates[idx][0]);
+        pco_msleep (100);
         err = pco_control_command(pco, &com, sizeof(com), &resp, sizeof(SC2_Camera_Type_Response));
         if (err != PCO_NOERROR)
             idx++;
     }
-    pco->baud_rate = baudrates[idx][1];
 
-    /* XXX: in the original code, SC2_Set_CL_Baudrate telegrams were send.
-     * However, doing so makes things worse and communication breaks. */
+    /* Adjust baud rate to gain some speed */
+    if (pco_set_baudrate (pco, 115200) == PCO_NOERROR) {
+        clSetBaudRate (pco->serial_ref, CL_BAUDRATE_115200);
+    }
 
     return err;
 }
@@ -449,7 +459,6 @@ static unsigned int pco_set_cl_config(pco_handle pco)
     }
     return err;
 }
-
 
 static int pco_reset_serial(pco_handle pco)
 {
