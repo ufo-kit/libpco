@@ -364,6 +364,7 @@ static unsigned int pco_retrieve_cl_config(pco_handle pco)
     return err;
 }
 
+#if 0
 static unsigned int pco_set_baudrate (pco_handle pco, uint32_t baudrate)
 {
     SC2_Set_CL_Baudrate req = {
@@ -375,6 +376,7 @@ static unsigned int pco_set_baudrate (pco_handle pco, uint32_t baudrate)
 
     return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
 }
+#endif
 
 static unsigned int pco_scan_and_set_baud_rate(pco_handle pco)
 {
@@ -404,10 +406,12 @@ static unsigned int pco_scan_and_set_baud_rate(pco_handle pco)
             idx++;
     }
 
+#if 0
     /* Adjust baud rate to gain some speed */
     if (pco_set_baudrate (pco, 115200) == PCO_NOERROR) {
         clSetBaudRate (pco->serial_ref, CL_BAUDRATE_115200);
     }
+#endif
 
     return err;
 }
