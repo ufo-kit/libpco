@@ -170,7 +170,20 @@ struct pco_t {
     size_t extra_timeout;
 };
 
-#define CHECK_ERR_CL(code) if ((code) != CL_OK) fprintf(stderr, "Error %i at %s:%i\n", (code), __FILE__, __LINE__);
+#define CHECK_ERR_CL(code) \
+    if ((code) != CL_OK)   \
+        fprintf (stderr, "cl-error: %i at %s:%i\n", (code), __FILE__, __LINE__);
+
+#define CHECK_PCO(code) \
+    if ((code) != PCO_NOERROR) { \
+        fprintf (stderr, "pco-error: %x at <%s:%i>\n", (code), __FILE__, __LINE__); \
+    }
+
+#define CHECK_PCO_AND_RETURN(code) {\
+    CHECK_PCO (code);               \
+    if ((code) != PCO_NOERROR)      \
+        return (code);              \
+    }
 
 /* Courtesy of PCO AG */
 static void decode_line(int width, void *bufout, void* bufin)
@@ -343,21 +356,21 @@ static unsigned int pco_retrieve_cl_config(pco_handle pco)
 
     com.wCode = GET_CL_CONFIGURATION;
     com.wSize = sizeof(SC2_Simple_Telegram);
-    err = pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
 
-    if (err != PCO_NOERROR)
-        printf("GET_CL_CONFIGURATION failed\n");
-    else {
-        pco->transfer.ClockFrequency = resp.dwClockFrequency;
-        pco->transfer.CCline = resp.bCCline;
-        pco->transfer.Transmit = resp.bTransmit;
-        pco->transfer.DataFormat = resp.bDataFormat;
-    }
+    err = pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
+    CHECK_PCO_AND_RETURN (err);
+
+    pco->transfer.ClockFrequency = resp.dwClockFrequency;
+    pco->transfer.CCline = resp.bCCline;
+    pco->transfer.Transmit = resp.bTransmit;
+    pco->transfer.DataFormat = resp.bDataFormat;
 
     com_iface.wCode = GET_INTERFACE_OUTPUT_FORMAT;
     com_iface.wSize = sizeof(com_iface);
     com_iface.wInterface = SET_INTERFACE_CAMERALINK;
+
     err = pco_control_command(pco, &com_iface, sizeof(com_iface), &resp_iface, sizeof(resp_iface));
+
     if (err == PCO_NOERROR)
         pco->transfer.DataFormat |= resp_iface.wFormat;
 
@@ -509,6 +522,7 @@ unsigned int pco_control_command(pco_handle pco,
     size = size_in;
 
     err = pco_build_checksum((unsigned char *) buffer_in, (int *) &size);
+
     if (err != PCO_NOERROR)
         printf("Something happened... but is ignored in the original code\n");
 
@@ -521,6 +535,7 @@ unsigned int pco_control_command(pco_handle pco,
     /* XXX: The pco.4000 needs at least 3 times the timeout which makes things
      * slow in the beginning. */
     cl_err = clSerialRead(pco->serial_ref, (char *) buffer, &size, pco->timeouts.command * 3 + pco->extra_timeout);
+
     if (cl_err < 0)
         return PCO_ERROR_DRIVER_IOFAILURE | PCO_ERROR_DRIVER_CAMERALINK;
     
@@ -538,6 +553,7 @@ unsigned int pco_control_command(pco_handle pco,
 
     cl_err = clSerialRead(pco->serial_ref, (char *) &buffer[sizeof(uint16_t)*2], &size, pco->timeouts.command*2);
     CHECK_ERR_CL(cl_err);
+
     if (cl_err < 0) 
         return PCO_ERROR_DRIVER_IOFAILURE | PCO_ERROR_DRIVER_CAMERALINK;
 
@@ -589,18 +605,17 @@ static unsigned int pco_set_rec_state(pco_handle pco, uint16_t state)
     uint32_t s, ns;
     SC2_Set_Recording_State com;
     SC2_Recording_State_Response resp;
+    SC2_COC_Runtime_Response coc;
 
     com.wCode = SET_RECORDING_STATE;
     com.wState = state;
     com.wSize = sizeof(SC2_Set_Recording_State);
-    err = pco_control_command(pco, &com, sizeof(SC2_Set_Recording_State),
-            &resp, sizeof(SC2_Recording_State_Response));
 
-    if (err != PCO_NOERROR)
-        return err;
+    err = pco_control_command (pco, &com, sizeof (SC2_Set_Recording_State), &resp, sizeof(SC2_Recording_State_Response));
+    CHECK_PCO_AND_RETURN (err);
 
-    SC2_COC_Runtime_Response coc;
-    pco_read_property(pco, GET_COC_RUNTIME, &coc, sizeof(coc));
+    err = pco_read_property (pco, GET_COC_RUNTIME, &coc, sizeof(coc));
+    CHECK_PCO_AND_RETURN (err);
     s = coc.dwtime_s;
     ns = coc.dwtime_s;
 
@@ -612,7 +627,9 @@ static unsigned int pco_set_rec_state(pco_handle pco, uint16_t state)
     ns /= 50;
 
     for (x = 0; x < ns; x++) {
-        pco_get_rec_state(pco, &g_state);
+        err = pco_get_rec_state (pco, &g_state);
+        CHECK_PCO_AND_RETURN (err);
+
         if (g_state == state)
             break;
 
@@ -2163,8 +2180,11 @@ pco_handle pco_init(void)
         goto no_pco;
     }
 
-    pco_set_rec_state(pco, 0);
-    pco_retrieve_cl_config(pco);
+    if (pco_set_rec_state (pco, 0))
+        goto no_pco;
+
+    if (pco_retrieve_cl_config (pco))
+        goto no_pco;
 
     /* Okay pco. You like to torture me. With insane default settings. */
     pco_set_bit_alignment(pco, false);
