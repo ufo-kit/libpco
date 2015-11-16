@@ -377,19 +377,19 @@ static unsigned int pco_retrieve_cl_config(pco_handle pco)
     return err;
 }
 
-#if 0
-static unsigned int pco_set_baudrate (pco_handle pco, uint32_t baudrate)
+static void
+pco_update_baud_rate (pco_handle pco)
 {
+    SC2_Get_CL_Baudrate_Response resp;
     SC2_Set_CL_Baudrate req = {
         .wCode = SET_CL_BAUDRATE,
-        .dwBaudrate = baudrate,
+        .dwBaudrate = 115200,
         .wSize = sizeof(req)
     };
-    SC2_Get_CL_Baudrate_Response resp;
 
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    if (pco_control_command (pco, &req, sizeof (req), &resp, sizeof (resp)) != PCO_NOERROR)
+        clSetBaudRate (pco->serial_ref, CL_BAUDRATE_115200);
 }
-#endif
 
 static unsigned int pco_scan_and_set_baud_rate(pco_handle pco)
 {
@@ -418,13 +418,6 @@ static unsigned int pco_scan_and_set_baud_rate(pco_handle pco)
         if (err != PCO_NOERROR)
             idx++;
     }
-
-#if 0
-    /* Adjust baud rate to gain some speed */
-    if (pco_set_baudrate (pco, 115200) == PCO_NOERROR) {
-        clSetBaudRate (pco->serial_ref, CL_BAUDRATE_115200);
-    }
-#endif
 
     return err;
 }
@@ -2191,6 +2184,13 @@ pco_handle pco_init(void)
 
     if (pco_read_property(pco, GET_CAMERA_DESCRIPTION, &pco->description, sizeof(pco->description)) != PCO_NOERROR)
         goto no_pco;
+
+    /* Update baud rate in case of dimax */
+    if (pco_get_camera_type (pco, &type, &subtype) != PCO_NOERROR)
+        goto no_pco;
+
+    if (type == CAMERATYPE_PCO_DIMAX_STD)
+        pco_update_baud_rate (pco);
 
     return pco;
 
