@@ -27,7 +27,7 @@
  * \section intro_installation Installation
  *
  * Check out a current branch from the repository or untar a release tarball
- * into some directory. Create a new empty directory and issue 
+ * into some directory. Create a new empty directory and issue
  * \code cmake <path-to-libpco>
  * \endcode
  * in a terminal. In order to change the installation prefix or library suffix
@@ -97,7 +97,7 @@
  * const int n_buffers = 5;
  *
  * dma_mem *mem = Fg_AllocMemEx(fg, n_buffers*width*height*sizeof(uint16_t), n_buffers);
- * if (mem == NULL) 
+ * if (mem == NULL)
  *     fprintf(stderr, "Couldn't allocate buffer memory!\n");
  *
  * pco_arm_camera(pco);
@@ -166,7 +166,7 @@ struct pco_t {
 
     uint32_t delay;
     uint32_t exposure;
-    
+
     size_t extra_timeout;
 };
 
@@ -310,7 +310,7 @@ static void pco_msleep(int time)
 static uint16_t pco_msb_pos(uint16_t x)
 {
     uint16_t val = 0;
-    while (x >>= 1) 
+    while (x >>= 1)
         ++val;
     return val;
 }
@@ -425,7 +425,7 @@ static unsigned int pco_scan_and_set_baud_rate(pco_handle pco)
 static unsigned int pco_read_property(pco_handle pco, uint16_t code, void *dst, uint32_t size)
 {
     SC2_Simple_Telegram req = { .wCode = code, .wSize = sizeof(req) };
-    return pco_control_command(pco, &req, sizeof(req), dst, size); 
+    return pco_control_command(pco, &req, sizeof(req), dst, size);
 }
 
 static unsigned int pco_get_delay_exposure(pco_handle pco, uint32_t *delay, uint32_t *exposure)
@@ -531,7 +531,7 @@ unsigned int pco_control_command(pco_handle pco,
 
     if (cl_err < 0)
         return PCO_ERROR_DRIVER_IOFAILURE | PCO_ERROR_DRIVER_CAMERALINK;
-    
+
     com_out = *((uint16_t*) buffer);
 
     uint16_t *b = (uint16_t *) buffer;
@@ -547,7 +547,7 @@ unsigned int pco_control_command(pco_handle pco,
     cl_err = clSerialRead(pco->serial_ref, (char *) &buffer[sizeof(uint16_t)*2], &size, pco->timeouts.command*2);
     CHECK_ERR_CL(cl_err);
 
-    if (cl_err < 0) 
+    if (cl_err < 0)
         return PCO_ERROR_DRIVER_IOFAILURE | PCO_ERROR_DRIVER_CAMERALINK;
 
     com_out = *((uint16_t *) buffer);
@@ -696,7 +696,7 @@ unsigned int pco_get_camera_type(pco_handle pco, uint16_t *type, uint16_t *subty
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  */
-unsigned int pco_get_camera_version(pco_handle pco, uint32_t *serial_number, 
+unsigned int pco_get_camera_version(pco_handle pco, uint32_t *serial_number,
         uint16_t *hw_major, uint16_t *hw_minor, uint16_t *fw_major, uint16_t *fw_minor)
 {
     SC2_Camera_Type_Response resp;
@@ -728,7 +728,7 @@ unsigned int pco_get_health_state(pco_handle pco, uint32_t *warnings, uint32_t *
     SC2_Camera_Health_Status_Response resp;
     unsigned int err = pco_read_property(pco, GET_CAMERA_HEALTH_STATUS, &resp, sizeof(resp));
     if (err == PCO_NOERROR) {
-        *warnings = resp.dwWarnings; 
+        *warnings = resp.dwWarnings;
         *errors = resp.dwErrors;
         *status = resp.dwStatus;
     }
@@ -865,7 +865,7 @@ unsigned int pco_get_cooling_temperature(pco_handle pco, int16_t *temperature)
     SC2_Cooling_Setpoint_Response resp;
     unsigned int err = pco_read_property(pco, GET_COOLING_SETPOINT_TEMPERATURE, &resp, sizeof(resp));
     if (err == PCO_NOERROR)
-        *temperature = resp.sTemp; 
+        *temperature = resp.sTemp;
     return err;
 }
 
@@ -1058,7 +1058,7 @@ unsigned int pco_set_scan_mode(pco_handle pco, uint32_t mode)
         pco->transfer.DataFormat = SCCMOS_FORMAT_TOP_CENTER_BOTTOM_CENTER | PCO_CL_DATAFORMAT_5x12;
     }
 
-    if ((err = pco_set_cl_config(pco)) != PCO_NOERROR) 
+    if ((err = pco_set_cl_config(pco)) != PCO_NOERROR)
         return err;
 
     SC2_Set_Pixelrate com;
@@ -1208,15 +1208,15 @@ unsigned int pco_get_storage_mode(pco_handle pco, uint16_t *mode)
  *
  * @param pco A #pco_handle.
  * @param mode Any of:
- *     - STORAGE_MODE_RECORDER: 
+ *     - STORAGE_MODE_RECORDER:
  *         - images are recorded and stored within the camRam
  *         - “live view” transfers the most recent image to the PC
- *         - indexed or total readout of images after the recording has been 
+ *         - indexed or total readout of images after the recording has been
  *            stopped
  *     - STORAGE_MODE_FIFO_BUFFER:
  *         - all images taken are transferred to the PC in chronological order
- *         - camRAM is used as huge FIFO buffer to bypass short bottlenecks in 
- *           data transmission. If buffer overflows the oldest images are 
+ *         - camRAM is used as huge FIFO buffer to bypass short bottlenecks in
+ *           data transmission. If buffer overflows the oldest images are
  *           overwritten. In FIFO buffer mode images are send directly to the
  *           PC interface like a continuous data stream. Synchronization is
  *           done with the interface.
@@ -1253,8 +1253,8 @@ unsigned int pco_get_record_mode(pco_handle pco, uint16_t *mode)
  *
  * @param pco A #pco_handle.
  * @param mode Any of:
- *     - RECORDER_SUBMODE_RINGBUFFER: camera records continuously into ring 
- *       buffer. If the allocated buffer is full, the oldest images are 
+ *     - RECORDER_SUBMODE_RINGBUFFER: camera records continuously into ring
+ *       buffer. If the allocated buffer is full, the oldest images are
          overwritten.
  *     - RECORDER_SUBMODE_SEQUENCE: recording is stopped when the allocated
          buffer is full
@@ -1317,7 +1317,7 @@ unsigned int pco_stop_recording(pco_handle pco)
  * Get current acquisition mode.
  *
  * @param pco A #pco_handle.
- * @param mode Acquisition mode 
+ * @param mode Acquisition mode
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  * @see pco_set_acquire_mode()
@@ -1348,7 +1348,7 @@ unsigned int pco_get_acquire_mode(pco_handle pco, uint16_t *mode)
 unsigned int pco_set_acquire_mode(pco_handle pco, uint16_t mode)
 {
     SC2_Set_Acquire_Mode req = { .wCode = SET_ACQUIRE_MODE, .wSize = sizeof(req), .wMode = mode };
-    SC2_Acquire_Mode_Response resp; 
+    SC2_Acquire_Mode_Response resp;
     return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
@@ -1377,7 +1377,7 @@ unsigned int pco_set_timestamp_mode(pco_handle pco, uint16_t mode)
 }
 
 /**
- * Get timestamp mode. 
+ * Get timestamp mode.
  *
  * @param pco A #pco_handle.
  * @param mode Locaton for the timestamp mode
@@ -1592,7 +1592,7 @@ unsigned int pco_set_roi(pco_handle pco, uint16_t *window)
  * *binning*.
  *
  * @param pco A #pco_handle.
- * @param window Four-element array 
+ * @param window Four-element array
  * @return Error code or PCO_NOERROR.
  */
 unsigned int pco_get_roi(pco_handle pco, uint16_t *window)
@@ -1607,7 +1607,7 @@ unsigned int pco_get_roi(pco_handle pco, uint16_t *window)
         window[2] = resp.wROI_x1;
         window[3] = resp.wROI_y1;
     }
-    return err; 
+    return err;
 }
 
 /**
@@ -1694,15 +1694,15 @@ unsigned int pco_get_binning(pco_handle pco, uint16_t *horizontal, uint16_t *ver
  *
  * @since 0.3
  */
-unsigned int pco_get_possible_binnings(pco_handle pco, 
+unsigned int pco_get_possible_binnings(pco_handle pco,
         uint16_t **horizontal, unsigned int *num_horizontal,
         uint16_t **vertical, unsigned int *num_vertical)
 {
-    unsigned int num_h = pco_get_num_binnings(pco->description.wMaxBinHorzDESC, pco->description.wBinHorzSteppingDESC); 
+    unsigned int num_h = pco_get_num_binnings(pco->description.wMaxBinHorzDESC, pco->description.wBinHorzSteppingDESC);
     uint16_t *r_horizontal = (uint16_t *) malloc(num_h * sizeof(uint16_t));
     pco_fill_binning_array(r_horizontal, num_h, pco->description.wBinHorzSteppingDESC);
 
-    unsigned int num_v = pco_get_num_binnings(pco->description.wMaxBinVertDESC, pco->description.wBinVertSteppingDESC); 
+    unsigned int num_v = pco_get_num_binnings(pco->description.wMaxBinVertDESC, pco->description.wBinVertSteppingDESC);
     uint16_t *r_vertical = (uint16_t *) malloc(num_v * sizeof(uint16_t));
     pco_fill_binning_array(r_vertical, num_v, pco->description.wBinVertSteppingDESC);
 
@@ -1917,7 +1917,7 @@ unsigned int pco_request_image(pco_handle pco)
  * on-board memory that can be read out after recording.
  *
  * @param pco A #pco_handle
- * @param segment Number of the segment from where to read. 
+ * @param segment Number of the segment from where to read.
  * @param start First frame to read.
  * @param end Last frame to read.
  * @return Error code or PCO_NOERROR.
@@ -1929,8 +1929,8 @@ unsigned int pco_request_image(pco_handle pco)
  */
 unsigned int pco_read_images(pco_handle pco, uint16_t segment, uint32_t start, uint32_t end)
 {
-    SC2_Read_Images_from_Segment req = { 
-        .wCode = READ_IMAGES_FROM_SEGMENT, 
+    SC2_Read_Images_from_Segment req = {
+        .wCode = READ_IMAGES_FROM_SEGMENT,
         .wSize = sizeof(req),
         .wSegment = segment,
         .dwStartImage = start,
@@ -1955,10 +1955,10 @@ unsigned int pco_get_segment_sizes(pco_handle pco, size_t sizes[4])
     SC2_Camera_RAM_Segment_Size_Response resp;
     unsigned int err = pco_read_property(pco, GET_CAMERA_RAM_SEGMENT_SIZE, &resp, sizeof(resp));
     if (err == PCO_NOERROR) {
-        sizes[0] = resp.dwSegment1Size; 
-        sizes[1] = resp.dwSegment2Size; 
-        sizes[2] = resp.dwSegment3Size; 
-        sizes[3] = resp.dwSegment4Size; 
+        sizes[0] = resp.dwSegment1Size;
+        sizes[1] = resp.dwSegment2Size;
+        sizes[2] = resp.dwSegment3Size;
+        sizes[3] = resp.dwSegment4Size;
     }
     return err;
 }
@@ -1989,7 +1989,7 @@ unsigned int pco_get_active_segment(pco_handle pco, uint16_t *segment)
  */
 unsigned int pco_clear_active_segment(pco_handle pco)
 {
-    SC2_Simple_Telegram req = { .wCode = CLEAR_RAM_SEGMENT, .wSize = sizeof(req) };    
+    SC2_Simple_Telegram req = { .wCode = CLEAR_RAM_SEGMENT, .wSize = sizeof(req) };
     SC2_Clear_RAM_Segment_Response resp;
     return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
 }
@@ -2022,10 +2022,10 @@ unsigned int pco_get_bit_alignment(pco_handle pco, bool *msb_aligned)
  */
 unsigned int pco_set_bit_alignment(pco_handle pco, bool msb_aligned)
 {
-    SC2_Set_Bit_Alignment req = { 
-        .wCode = SET_BIT_ALIGNMENT, 
-        .wSize = sizeof(req), 
-        .wAlignment = msb_aligned ? 0 : 1 
+    SC2_Set_Bit_Alignment req = {
+        .wCode = SET_BIT_ALIGNMENT,
+        .wSize = sizeof(req),
+        .wAlignment = msb_aligned ? 0 : 1
     };
     SC2_Bit_Alignment_Response resp;
     return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
@@ -2066,12 +2066,12 @@ unsigned int pco_get_actual_size(pco_handle pco, uint32_t *width, uint32_t *heig
 unsigned int pco_edge_get_shutter(pco_handle pco, pco_edge_shutter *shutter)
 {
    unsigned int err = PCO_NOERROR;
- 
+
     SC2_Simple_Telegram req = {
         .wCode = GET_CAMERA_SETUP,
         .wSize = sizeof(SC2_Simple_Telegram),
     };
-    SC2_Get_Camera_Setup_Response resp; 
+    SC2_Get_Camera_Setup_Response resp;
 
     err = pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
 
@@ -2091,14 +2091,14 @@ unsigned int pco_edge_get_shutter(pco_handle pco, pco_edge_shutter *shutter)
 unsigned int pco_edge_set_shutter(pco_handle pco, pco_edge_shutter shutter)
 {
     unsigned int err = PCO_NOERROR;
- 
+
     SC2_Set_Camera_Setup req = {
         .wCode = SET_CAMERA_SETUP,
         .wSize = sizeof(SC2_Set_Camera_Setup),
         .wType = 0,
     };
 
-    SC2_Set_Camera_Setup_Response resp; 
+    SC2_Set_Camera_Setup_Response resp;
 
     for (int i = 0; i < NUMSETUPFLAGS; i++)
         req.dwSetupFlags[i] = shutter;
@@ -2127,7 +2127,12 @@ pco_reorder_image_t pco_get_reorder_func(pco_handle pco)
  */
 pco_handle pco_init(void)
 {
-    pco_handle pco = (pco_handle) malloc(sizeof(struct pco_t));
+    pco_handle pco;
+    uint16_t type;
+    uint16_t subtype;
+
+    pco = (pco_handle) malloc(sizeof(struct pco_t));
+
     if (pco == NULL)
         return NULL;
 
@@ -2169,7 +2174,7 @@ pco_handle pco_init(void)
     }
 
     if (pco_get_delay_exposure(pco, &pco->delay, &pco->exposure)) {
-        fprintf(stderr, "Unable to read default delay and exposure time\n"); 
+        fprintf(stderr, "Unable to read default delay and exposure time\n");
         goto no_pco;
     }
 
