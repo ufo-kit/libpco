@@ -2131,8 +2131,8 @@ pco_handle pco_init(void)
     if (pco == NULL)
         return NULL;
 
-    memset(pco, 0, sizeof(pco));
-    
+    memset (pco, 0, sizeof (struct pco_t));
+
     pco->reorder_image = &pco_reorder_image_5x16;
     pco->timeouts.command = PCO_SC2_COMMAND_TIMEOUT;
     pco->timeouts.image = PCO_SC2_IMAGE_TIMEOUT_L;
