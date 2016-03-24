@@ -2194,8 +2194,12 @@ pco_handle pco_init(void)
     if (pco_get_camera_type (pco, &type, &subtype) != PCO_NOERROR)
         goto no_pco;
 
-    if (type == CAMERATYPE_PCO_DIMAX_STD)
+    if (type == CAMERATYPE_PCO_DIMAX_STD) {
         pco_update_baud_rate (pco);
+        pco_retrieve_cl_config(pco);
+        pco->transfer.DataFormat = PCO_CL_DATAFORMAT_2x12;
+        pco_set_cl_config(pco);
+    }
 
     return pco;
 
