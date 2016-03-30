@@ -137,6 +137,7 @@
 #include <unistd.h>
 #include <sys/select.h>
 #include <clser.h>
+#include <time.h>
 
 #include "libpco.h"
 #include "sc2_defs.h"
@@ -2110,6 +2111,34 @@ unsigned int pco_edge_set_shutter(pco_handle pco, pco_edge_shutter shutter)
 }
 
 /**
+ * Set current date and time for use in time stamp mode
+ *
+ * @param pco A #pco_handle
+ * @return Error code or PCO_NOERROR
+ */
+unsigned int pco_set_date_time(pco_handle pco)
+{
+    time_t current_time = time(NULL);
+    struct tm ct = *localtime(&current_time);
+
+    SC2_Set_Date_Time req = {
+        .wCode = SET_DATE_TIME,
+        .wSize = sizeof(SC2_Set_Date_Time),
+        .bDay = ct.tm_mday,
+        .bMonth = ct.tm_mon+1,
+        .wYear = ct.tm_year+1900,
+        .wHours = ct.tm_hour,
+        .bMinutes = ct.tm_min,
+        .bSeconds = ct.tm_sec,
+    };
+
+    SC2_Date_Time_Response resp;
+    
+    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    
+}
+
+/**
  * Return the currently used re-order function.
  *
  * @param pco A #pco_handle
@@ -2186,6 +2215,8 @@ pco_handle pco_init(void)
 
     /* Okay pco. You like to torture me. With insane default settings. */
     pco_set_bit_alignment(pco, false);
+    /* Date and time should be set once when the camera in turned on. They are updated as long as the camera is supplied with power. */
+    pco_set_date_time(pco);
 
     if (pco_read_property(pco, GET_CAMERA_DESCRIPTION, &pco->description, sizeof(pco->description)) != PCO_NOERROR)
         goto no_pco;
@@ -2194,8 +2225,12 @@ pco_handle pco_init(void)
     if (pco_get_camera_type (pco, &type, &subtype) != PCO_NOERROR)
         goto no_pco;
 
-    if (type == CAMERATYPE_PCO_DIMAX_STD)
+    if (type == CAMERATYPE_PCO_DIMAX_STD) {
         pco_update_baud_rate (pco);
+        pco_retrieve_cl_config(pco);
+        pco->transfer.DataFormat = PCO_CL_DATAFORMAT_2x12;
+        pco_set_cl_config(pco);
+    }
 
     return pco;
 
