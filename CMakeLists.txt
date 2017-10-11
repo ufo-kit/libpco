@@ -4,8 +4,8 @@ project(libpco C)
 #{{{ CMake
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
 
-include(ConfigurePaths)
-configure_paths(LIBPCO)
+include(GNUInstallDirs)
+set(CMAKE_INSTALL_PKGCONFIGDIR  "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
 #}}}
 #{{{ Metadata
 set(TARNAME "libpco")
@@ -47,13 +47,13 @@ set_target_properties(pco PROPERTIES
                       SOVERSION ${LIBPCO_VERSION_MAJOR})
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/pco.pc
-        DESTINATION ${LIBPCO_PKGCONFIGDIR})
+        DESTINATION ${CMAKE_INSTALL_PKGCONFIGDIR})
 
 install(TARGETS pco
-        LIBRARY DESTINATION ${LIBPCO_LIBDIR})
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 install(FILES src/libpco.h src/sc2_defs.h src/PCO_err.h
-        DESTINATION ${LIBPCO_INCLUDEDIR}/libpco)
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libpco)
 
 #{{{ Test binary
 if (FGLIB5_FOUND)
