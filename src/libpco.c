@@ -187,7 +187,8 @@ struct pco_t {
     }
 
 /* Courtesy of PCO AG */
-static void decode_line(int width, void *bufout, void* bufin)
+static void
+decode_line (int width, void *bufout, void* bufin)
 {
     uint32_t *lineadr_in = (uint32_t *) bufin;
     uint32_t *lineadr_out = (uint32_t *) bufout;
@@ -223,100 +224,112 @@ static void decode_line(int width, void *bufout, void* bufin)
     }
 }
 
-static void pco_reorder_image_5x12(uint16_t *bufout, uint16_t *bufin, int width, int height)
+static void
+pco_reorder_image_5x12 (uint16_t *bufout, uint16_t *bufin, int width, int height)
 {
     uint16_t *line_top = bufout;
     uint16_t *line_bottom = bufout + (height-1)*width;
     uint16_t *line_in = bufin;
-    int off = (width*12)/16;
+    int off = (width*12) / 16;
 
     for (int y = 0; y < height/2; y++) {
-        decode_line(width, line_top, line_in);
+        decode_line (width, line_top, line_in);
         line_in += off;
-        decode_line(width, line_bottom, line_in);
+        decode_line (width, line_bottom, line_in);
         line_in += off;
         line_top += width;
         line_bottom -= width;
     }
 }
 
-static void pco_reorder_image_5x16(uint16_t *bufout, uint16_t *bufin, int width, int height)
+static void
+pco_reorder_image_5x16 (uint16_t *bufout, uint16_t *bufin, int width, int height)
 {
     uint16_t *line_top = bufout;
     uint16_t *line_bottom = bufout + (height-1)*width;
     uint16_t *line_in = bufin;
 
     for (int y = 0; y < height/2; y++) {
-        memcpy(line_top, line_in, width*sizeof(uint16_t));
+        memcpy (line_top, line_in, width * sizeof(uint16_t));
         line_in += width;
-        memcpy(line_bottom, line_in, width*sizeof(uint16_t));
+        memcpy (line_bottom, line_in, width * sizeof(uint16_t));
         line_in += width;
         line_top += width;
         line_bottom -= width;
     }
 }
 
-static uint32_t pco_build_checksum(unsigned char *buffer, int *size)
+static uint32_t
+pco_build_checksum (unsigned char *buffer, int *size)
 {
     unsigned char sum = 0;
     unsigned short *b = (unsigned short *) buffer;
     b++;
     int bsize = *b - 1;
+
     if (bsize > *size)
         return PCO_ERROR_DRIVER_CHECKSUMERROR | PCO_ERROR_DRIVER_CAMERALINK;
 
     int x = 0;
+
     for (; x < bsize; x++)
         sum += buffer[x];
+
     buffer[x] = sum;
     *size = x + 1;
     return PCO_NOERROR;
 }
 
-static uint32_t pco_test_checksum(unsigned char *buffer, int *size)
+static uint32_t
+pco_test_checksum (unsigned char *buffer, int *size)
 {
     unsigned char sum = 0;
     unsigned short *b = (unsigned short *) buffer;
     b++;
     int bsize = *b - 1;
-    if (bsize > *size) {
+
+    if (bsize > *size)
         return PCO_ERROR_DRIVER_CHECKSUMERROR | PCO_ERROR_DRIVER_CAMERALINK;
-    }
 
     int x = 0;
+
     for (; x < bsize; x++)
         sum += buffer[x];
 
-    if (buffer[x] != sum) {
+    if (buffer[x] != sum)
         return PCO_ERROR_DRIVER_CHECKSUMERROR | PCO_ERROR_DRIVER_CAMERALINK;
-    }
 
     *size = x + 1;
     return PCO_NOERROR;
 }
 
-static void pco_msleep(int time)
+static void
+pco_msleep (int time)
 {
     fd_set rfds;
     struct timeval tv;
 
-    FD_ZERO(&rfds);
-    FD_SET(0, &rfds);
+    FD_ZERO (&rfds);
+    FD_SET (0, &rfds);
 
     tv.tv_sec = time / 1000;
     tv.tv_usec = (time % 1000) / 1000;
-    select(0, NULL, NULL, NULL, &tv);
+    select (0, NULL, NULL, NULL, &tv);
 }
 
-static uint16_t pco_msb_pos(uint16_t x)
+static uint16_t
+pco_msb_pos (uint16_t x)
 {
     uint16_t val = 0;
+
     while (x >>= 1)
         ++val;
+
     return val;
 }
 
-static void pco_fill_binning_array(uint16_t *a, unsigned int n, int is_linear)
+static void
+pco_fill_binning_array (uint16_t *a, unsigned int n, int is_linear)
 {
     if (is_linear) {
         for (int i = 0; i < n; i++)
@@ -328,14 +341,16 @@ static void pco_fill_binning_array(uint16_t *a, unsigned int n, int is_linear)
     }
 }
 
-static unsigned int pco_get_num_binnings(uint16_t max_binning, int is_linear)
+static unsigned int
+pco_get_num_binnings (uint16_t max_binning, int is_linear)
 {
     /* In the linear case, we have 1 to max(bin) binnings, otherwise
      * this is log_2(max(bin)) + 1. */
-    return is_linear ? max_binning : pco_msb_pos(max_binning) + 1;
+    return is_linear ? max_binning : pco_msb_pos (max_binning) + 1;
 }
 
-static unsigned int pco_set_delay_exposure(pco_handle pco, uint32_t delay, uint32_t exposure)
+static unsigned int
+pco_set_delay_exposure (pco_handle pco, uint32_t delay, uint32_t exposure)
 {
     SC2_Set_Delay_Exposure com;
     SC2_Delay_Exposure_Response resp;
@@ -344,10 +359,11 @@ static unsigned int pco_set_delay_exposure(pco_handle pco, uint32_t delay, uint3
     com.wSize = sizeof(SC2_Set_Delay_Exposure);
     com.dwDelay = delay;
     com.dwExposure = exposure;
-    return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
+    return pco_control_command (pco, &com, sizeof(com), &resp, sizeof(resp));
 }
 
-static unsigned int pco_retrieve_cl_config(pco_handle pco)
+static unsigned int
+pco_retrieve_cl_config (pco_handle pco)
 {
     SC2_Simple_Telegram com;
     SC2_Get_CL_Configuration_Response resp;
@@ -358,7 +374,7 @@ static unsigned int pco_retrieve_cl_config(pco_handle pco)
     com.wCode = GET_CL_CONFIGURATION;
     com.wSize = sizeof(SC2_Simple_Telegram);
 
-    err = pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
+    err = pco_control_command (pco, &com, sizeof(com), &resp, sizeof(resp));
     CHECK_PCO_AND_RETURN (err);
 
     pco->transfer.ClockFrequency = resp.dwClockFrequency;
@@ -370,7 +386,7 @@ static unsigned int pco_retrieve_cl_config(pco_handle pco)
     com_iface.wSize = sizeof(com_iface);
     com_iface.wInterface = SET_INTERFACE_CAMERALINK;
 
-    err = pco_control_command(pco, &com_iface, sizeof(com_iface), &resp_iface, sizeof(resp_iface));
+    err = pco_control_command (pco, &com_iface, sizeof(com_iface), &resp_iface, sizeof(resp_iface));
 
     if (err == PCO_NOERROR)
         pco->transfer.DataFormat |= resp_iface.wFormat;
@@ -392,7 +408,8 @@ pco_update_baud_rate (pco_handle pco)
         clSetBaudRate (pco->serial_ref, CL_BAUDRATE_115200);
 }
 
-static unsigned int pco_scan_and_set_baud_rate(pco_handle pco)
+static unsigned int
+pco_scan_and_set_baud_rate (pco_handle pco)
 {
     static uint32_t baudrates[9][2] = {
         { CL_BAUDRATE_115200, 115200 },
@@ -423,24 +440,29 @@ static unsigned int pco_scan_and_set_baud_rate(pco_handle pco)
     return err;
 }
 
-static unsigned int pco_read_property(pco_handle pco, uint16_t code, void *dst, uint32_t size)
+static unsigned int
+pco_read_property (pco_handle pco, uint16_t code, void *dst, uint32_t size)
 {
     SC2_Simple_Telegram req = { .wCode = code, .wSize = sizeof(req) };
     return pco_control_command(pco, &req, sizeof(req), dst, size);
 }
 
-static unsigned int pco_get_delay_exposure(pco_handle pco, uint32_t *delay, uint32_t *exposure)
+static unsigned int
+pco_get_delay_exposure (pco_handle pco, uint32_t *delay, uint32_t *exposure)
 {
     unsigned int err = PCO_NOERROR;
     SC2_Delay_Exposure_Response resp;
+
     if (pco_read_property(pco, GET_DELAY_EXPOSURE_TIME, &resp, sizeof(resp)) == PCO_NOERROR) {
         *delay = resp.dwDelay;
         *exposure = resp.dwExposure;
     }
+
     return err;
 }
 
-static unsigned int pco_set_cl_config(pco_handle pco)
+static unsigned int
+pco_set_cl_config (pco_handle pco)
 {
     SC2_Set_CL_Configuration cl_com;
     SC2_Get_CL_Configuration_Response cl_resp;
@@ -453,7 +475,8 @@ static unsigned int pco_set_cl_config(pco_handle pco)
     cl_com.bCCline = pco->transfer.CCline & 0xFF;
     cl_com.bDataFormat = pco->transfer.DataFormat & 0xFF;
 
-    err = pco_control_command(pco, &cl_com, sizeof(cl_com), &cl_resp, sizeof(cl_resp));
+    err = pco_control_command (pco, &cl_com, sizeof(cl_com), &cl_resp, sizeof(cl_resp));
+
     if (err != PCO_NOERROR)
         return err;
 
@@ -466,12 +489,14 @@ static unsigned int pco_set_cl_config(pco_handle pco)
         req.wSize= sizeof(req);
         req.wFormat = pco->transfer.DataFormat & SCCMOS_FORMAT_MASK;
         req.wInterface = INTERFACE_CL_SCCMOS;
-        err = pco_control_command(pco, &req, sizeof(req), &resp_if, sizeof(resp_if));
+        err = pco_control_command (pco, &req, sizeof(req), &resp_if, sizeof(resp_if));
     }
+
     return err;
 }
 
-static int pco_reset_serial(pco_handle pco)
+static int
+pco_reset_serial (pco_handle pco)
 {
     for (int i = 0; i < pco->num_ports; i++)
         clSerialClose(pco->serial_refs[i]);
@@ -496,9 +521,8 @@ static int pco_reset_serial(pco_handle pco)
  * @param size_out Size of #buffer_out
  * @return Error code or PCO_NOERROR.
  */
-unsigned int pco_control_command(pco_handle pco,
-        void *buffer_in, uint32_t size_in,
-        void *buffer_out, uint32_t size_out)
+unsigned int
+pco_control_command (pco_handle pco, void *buffer_in, uint32_t size_in, void *buffer_out, uint32_t size_out)
 {
     unsigned char buffer[PCO_SC2_DEF_BLOCK_SIZE];
     unsigned int size;
@@ -506,21 +530,20 @@ unsigned int pco_control_command(pco_handle pco,
     uint32_t err = PCO_NOERROR;
     int cl_err = CL_OK;
 
-    cl_err = clFlushPort(pco->serial_ref);
+    cl_err = clFlushPort (pco->serial_ref);
     CHECK_ERR_CL(cl_err);
 
     com_out = 0;
     com_in = *((uint16_t *) buffer_in);
-    memset(buffer, 0, PCO_SC2_DEF_BLOCK_SIZE);
+    memset (buffer, 0, PCO_SC2_DEF_BLOCK_SIZE);
 
     size = size_in;
-
-    err = pco_build_checksum((unsigned char *) buffer_in, (int *) &size);
+    err = pco_build_checksum ((unsigned char *) buffer_in, (int *) &size);
 
     if (err != PCO_NOERROR)
-        printf("Something happened... but is ignored in the original code\n");
+        fprintf (stderr, "Something happened... but is ignored in the original code\n");
 
-    cl_err = clSerialWrite(pco->serial_ref, (char *) buffer_in, &size, pco->timeouts.command);
+    cl_err = clSerialWrite (pco->serial_ref, (char *) buffer_in, &size, pco->timeouts.command);
     CHECK_ERR_CL(cl_err);
     size = sizeof(uint16_t) * 2;
 
@@ -528,7 +551,7 @@ unsigned int pco_control_command(pco_handle pco,
 
     /* XXX: The pco.4000 needs at least 3 times the timeout which makes things
      * slow in the beginning. */
-    cl_err = clSerialRead(pco->serial_ref, (char *) buffer, &size, pco->timeouts.command * 3 + pco->extra_timeout);
+    cl_err = clSerialRead (pco->serial_ref, (char *) buffer, &size, pco->timeouts.command * 3 + pco->extra_timeout);
 
     if (cl_err < 0)
         return PCO_ERROR_DRIVER_IOFAILURE | PCO_ERROR_DRIVER_CAMERALINK;
@@ -538,23 +561,26 @@ unsigned int pco_control_command(pco_handle pco,
     uint16_t *b = (uint16_t *) buffer;
     b++;
     size = (unsigned int) *b;
+
     if (size > PCO_SC2_DEF_BLOCK_SIZE)
         size = PCO_SC2_DEF_BLOCK_SIZE;
+
     size -= sizeof(uint16_t) * 2;
 
     if ((size < 0) || (com_in != (com_out & 0xFF3F)))
         return PCO_ERROR_DRIVER_IOFAILURE | PCO_ERROR_DRIVER_CAMERALINK;
 
-    cl_err = clSerialRead(pco->serial_ref, (char *) &buffer[sizeof(uint16_t)*2], &size, pco->timeouts.command*2);
+    cl_err = clSerialRead (pco->serial_ref, (char *) &buffer[sizeof(uint16_t)*2], &size, pco->timeouts.command*2);
     CHECK_ERR_CL(cl_err);
 
     if (cl_err < 0)
         return PCO_ERROR_DRIVER_IOFAILURE | PCO_ERROR_DRIVER_CAMERALINK;
 
     com_out = *((uint16_t *) buffer);
+
     if ((com_out & RESPONSE_ERROR_CODE) == RESPONSE_ERROR_CODE) {
         SC2_Failure_Response resp;
-        memcpy(&resp, buffer, sizeof(SC2_Failure_Response));
+        memcpy (&resp, buffer, sizeof(SC2_Failure_Response));
         err = resp.dwerrmess;
         if ((resp.dwerrmess & 0xC000FFFF) == PCO_ERROR_FIRMWARE_NOT_SUPPORTED)
             ;   /* TODO: log message here */
@@ -570,28 +596,34 @@ unsigned int pco_control_command(pco_handle pco,
             err = PCO_ERROR_DRIVER_DATAERROR | PCO_ERROR_DRIVER_CAMERALINK;
     }
 
-    err = pco_test_checksum(buffer, (int *) &size);
+    err = pco_test_checksum (buffer, (int *) &size);
+
     if (err == PCO_NOERROR) {
         size -= 1;
+
         if (size < size_out)
             size_out = size;
-        memcpy(buffer_out, buffer, size_out);
+
+        memcpy (buffer_out, buffer, size_out);
     }
+
     return err;
 }
 
-static unsigned int pco_get_rec_state(pco_handle pco, uint16_t *state)
+static unsigned int
+pco_get_rec_state (pco_handle pco, uint16_t *state)
 {
     SC2_Recording_State_Response resp;
     SC2_Simple_Telegram req = { .wCode = GET_RECORDING_STATE, .wSize = sizeof(req) };
     unsigned int err = PCO_NOERROR;
 
-    err = pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    err = pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
     *state = resp.wState;
     return err;
 }
 
-static unsigned int pco_set_rec_state(pco_handle pco, uint16_t state)
+static unsigned int
+pco_set_rec_state (pco_handle pco, uint16_t state)
 {
     const uint32_t REC_WAIT_TIME = 500;
     uint16_t g_state, x = 0;
@@ -627,7 +659,7 @@ static unsigned int pco_set_rec_state(pco_handle pco, uint16_t state)
         if (g_state == state)
             break;
 
-        pco_msleep(1000);
+        pco_msleep (1000);
     }
 
     if (x >= ns)
@@ -650,17 +682,20 @@ static unsigned int pco_set_rec_state(pco_handle pco, uint16_t state)
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  */
-unsigned int pco_get_name(pco_handle pco, char **name)
+unsigned int
+pco_get_name (pco_handle pco, char **name)
 {
     SC2_Camera_Name_Response resp;
-    unsigned int err = pco_read_property(pco, GET_CAMERA_NAME, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_CAMERA_NAME, &resp, sizeof(resp));
+
     if (err == PCO_NOERROR) {
-        char *s = (char *) malloc(40);
+        char *s = (char *) malloc (40);
         strncpy(s, resp.szName, 40);
         *name = s;
     }
     else
         *name = NULL;
+
     return err;
 }
 
@@ -674,14 +709,17 @@ unsigned int pco_get_name(pco_handle pco, char **name)
  * @since 0.2
  * @note Camera types are defined in sc2_defs.h
  */
-unsigned int pco_get_camera_type(pco_handle pco, uint16_t *type, uint16_t *subtype)
+unsigned int
+pco_get_camera_type (pco_handle pco, uint16_t *type, uint16_t *subtype)
 {
     SC2_Camera_Type_Response resp;
-    unsigned int err = pco_read_property(pco, GET_CAMERA_TYPE, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_CAMERA_TYPE, &resp, sizeof(resp));
+
     if (err == PCO_NOERROR) {
         *type = resp.wCamType;
         *subtype = resp.wCamSubType;
     }
+
     return err;
 }
 
@@ -697,11 +735,11 @@ unsigned int pco_get_camera_type(pco_handle pco, uint16_t *type, uint16_t *subty
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  */
-unsigned int pco_get_camera_version(pco_handle pco, uint32_t *serial_number,
-        uint16_t *hw_major, uint16_t *hw_minor, uint16_t *fw_major, uint16_t *fw_minor)
+unsigned int
+pco_get_camera_version (pco_handle pco, uint32_t *serial_number, uint16_t *hw_major, uint16_t *hw_minor, uint16_t *fw_major, uint16_t *fw_minor)
 {
     SC2_Camera_Type_Response resp;
-    unsigned int err = pco_read_property(pco, GET_CAMERA_TYPE, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_CAMERA_TYPE, &resp, sizeof(resp));
 
     if (err == PCO_NOERROR) {
         *serial_number = resp.dwSerialNumber;
@@ -710,6 +748,7 @@ unsigned int pco_get_camera_version(pco_handle pco, uint32_t *serial_number,
         *fw_major = resp.dwFWVersion >> 16;
         *fw_minor = resp.dwFWVersion & 0xFFFF;
     }
+
     return err;
 }
 
@@ -724,15 +763,18 @@ unsigned int pco_get_camera_version(pco_handle pco, uint32_t *serial_number,
  * @since 0.2
  * @note Defines are listed in sc2_defs.h.
  */
-unsigned int pco_get_health_state(pco_handle pco, uint32_t *warnings, uint32_t *errors, uint32_t *status)
+unsigned int
+pco_get_health_state (pco_handle pco, uint32_t *warnings, uint32_t *errors, uint32_t *status)
 {
     SC2_Camera_Health_Status_Response resp;
-    unsigned int err = pco_read_property(pco, GET_CAMERA_HEALTH_STATUS, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_CAMERA_HEALTH_STATUS, &resp, sizeof(resp));
+
     if (err == PCO_NOERROR) {
         *warnings = resp.dwWarnings;
         *errors = resp.dwErrors;
         *status = resp.dwStatus;
     }
+
     return err;
 }
 
@@ -742,7 +784,8 @@ unsigned int pco_get_health_state(pco_handle pco, uint32_t *warnings, uint32_t *
  * @param pco A #pco_handle.
  * @return Error code or PCO_NOERROR.
  */
-unsigned int pco_reset(pco_handle pco)
+unsigned int
+pco_reset (pco_handle pco)
 {
     SC2_Reset_Settings_To_Default_Response resp;
     return pco_read_property(pco, RESET_SETTINGS_TO_DEFAULT, &resp, sizeof(resp));
@@ -763,12 +806,15 @@ unsigned int pco_reset(pco_handle pco)
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
-unsigned int pco_get_sensor_format(pco_handle pco, uint16_t *format)
+unsigned int
+pco_get_sensor_format (pco_handle pco, uint16_t *format)
 {
     SC2_Sensor_Format_Response resp;
-    unsigned int err = pco_read_property(pco, GET_SENSOR_FORMAT, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_SENSOR_FORMAT, &resp, sizeof(resp));
+
     if (err == PCO_NOERROR)
         *format = resp.wFormat;
+
     return err;
 }
 
@@ -783,11 +829,12 @@ unsigned int pco_get_sensor_format(pco_handle pco, uint16_t *format)
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
-unsigned int pco_set_sensor_format(pco_handle pco, uint16_t format)
+unsigned int
+pco_set_sensor_format (pco_handle pco, uint16_t format)
 {
     SC2_Set_Sensor_Format req = { .wCode = SET_SENSOR_FORMAT, .wSize = sizeof(req), .wFormat = format };
     SC2_Sensor_Format_Response resp;
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    return pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 /**
@@ -801,15 +848,18 @@ unsigned int pco_set_sensor_format(pco_handle pco, uint16_t format)
  * @note If a specific temperature sensor is not available, the values are
  * undefined.
  */
-unsigned int pco_get_temperature(pco_handle pco, int32_t *ccd, int32_t *camera, int32_t *power)
+unsigned int
+pco_get_temperature (pco_handle pco, int32_t *ccd, int32_t *camera, int32_t *power)
 {
     SC2_Temperature_Response resp;
-    unsigned int err = pco_read_property(pco, GET_TEMPERATURE, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_TEMPERATURE, &resp, sizeof(resp));
+
     if (err == PCO_NOERROR) {
         *ccd = resp.sCCDtemp;
         *camera = resp.sCamtemp;
         *power = resp.sPStemp;
     }
+
     return err;
 }
 
@@ -824,7 +874,8 @@ unsigned int pco_get_temperature(pco_handle pco, int32_t *ccd, int32_t *camera, 
  * @since 0.3
  * @see pco_set_cooling_temperature()
  */
-unsigned int pco_get_cooling_range(pco_handle pco, int16_t *default_temp, int16_t *min_temp, int16_t *max_temp)
+unsigned int
+pco_get_cooling_range (pco_handle pco, int16_t *default_temp, int16_t *min_temp, int16_t *max_temp)
 {
     *default_temp = pco->description.sDefaultCoolSetDESC;
     *min_temp = pco->description.sMinCoolSetDESC;
@@ -844,12 +895,12 @@ unsigned int pco_get_cooling_range(pco_handle pco, int16_t *default_temp, int16_
  * \Delta\vartheta_\textrm{max} + 5^\circ \mathrm{C}\f$.
  * @see pco_get_cooling_range()
  */
-unsigned int pco_set_cooling_temperature(pco_handle pco, int16_t temperature)
+unsigned int
+pco_set_cooling_temperature (pco_handle pco, int16_t temperature)
 {
-    SC2_Set_Cooling_Setpoint req = { .wCode = SET_COOLING_SETPOINT_TEMPERATURE,
-        .sTemp = temperature, .wSize = sizeof(req) };
+    SC2_Set_Cooling_Setpoint req = { .wCode = SET_COOLING_SETPOINT_TEMPERATURE, .sTemp = temperature, .wSize = sizeof(req) };
     SC2_Cooling_Setpoint_Response resp;
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    return pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 /**
@@ -861,12 +912,15 @@ unsigned int pco_set_cooling_temperature(pco_handle pco, int16_t temperature)
  * @since 0.3
  * @see pco_get_cooling_range()
  */
-unsigned int pco_get_cooling_temperature(pco_handle pco, int16_t *temperature)
+unsigned int
+pco_get_cooling_temperature (pco_handle pco, int16_t *temperature)
 {
     SC2_Cooling_Setpoint_Response resp;
-    unsigned int err = pco_read_property(pco, GET_COOLING_SETPOINT_TEMPERATURE, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_COOLING_SETPOINT_TEMPERATURE, &resp, sizeof(resp));
+
     if (err == PCO_NOERROR)
         *temperature = resp.sTemp;
+
     return err;
 }
 
@@ -881,7 +935,8 @@ unsigned int pco_get_cooling_temperature(pco_handle pco, int16_t *temperature)
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  */
-unsigned int pco_get_resolution(pco_handle pco, uint16_t *width_std, uint16_t *height_std, uint16_t *width_ex, uint16_t *height_ex)
+unsigned int
+pco_get_resolution (pco_handle pco, uint16_t *width_std, uint16_t *height_std, uint16_t *width_ex, uint16_t *height_ex)
 {
     *width_std = pco->description.wMaxHorzResStdDESC;
     *height_std = pco->description.wMaxVertResStdDESC;
@@ -899,7 +954,8 @@ unsigned int pco_get_resolution(pco_handle pco, uint16_t *width_std, uint16_t *h
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  */
-unsigned int pco_get_available_pixelrates(pco_handle pco, uint32_t rates[4], int *num_rates)
+unsigned int
+pco_get_available_pixelrates (pco_handle pco, uint32_t rates[4], int *num_rates)
 {
     int j = 0;
     for (int i = 0; i < 4; i++)
@@ -921,14 +977,15 @@ unsigned int pco_get_available_pixelrates(pco_handle pco, uint32_t rates[4], int
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
-unsigned int pco_set_adc_mode(pco_handle pco, pco_adc_mode mode)
+unsigned int
+pco_set_adc_mode (pco_handle pco, pco_adc_mode mode)
 {
     SC2_Set_ADC_Operation req = {
         .wCode = SET_ADC_OPERATION, .wSize = sizeof(req),
         .wMode = (uint16_t) mode
     };
     SC2_ADC_Operation_Response resp;
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    return pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 /**
@@ -939,12 +996,15 @@ unsigned int pco_set_adc_mode(pco_handle pco, pco_adc_mode mode)
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
-unsigned int pco_get_adc_mode(pco_handle pco, pco_adc_mode *mode)
+unsigned int
+pco_get_adc_mode (pco_handle pco, pco_adc_mode *mode)
 {
     SC2_ADC_Operation_Response resp;
-    unsigned int err = pco_read_property(pco, GET_ADC_OPERATION, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_ADC_OPERATION, &resp, sizeof(resp));
+
     if (err == PCO_NOERROR)
         *mode = resp.wMode;
+
     return err;
 }
 
@@ -955,7 +1015,8 @@ unsigned int pco_get_adc_mode(pco_handle pco, pco_adc_mode *mode)
  * @return The number of ADCs that can be set with pco_set_adc_mode().
  * @since 0.3
  */
-unsigned int pco_get_maximum_number_of_adcs(pco_handle pco)
+unsigned int
+pco_get_maximum_number_of_adcs (pco_handle pco)
 {
     return pco->description.wNumADCsDESC;
 }
@@ -969,12 +1030,15 @@ unsigned int pco_get_maximum_number_of_adcs(pco_handle pco)
  * @since 0.2.0
  * @see pco_set_pixelrate().
  */
-unsigned int pco_get_pixelrate(pco_handle pco, uint32_t *rate)
+unsigned int
+pco_get_pixelrate (pco_handle pco, uint32_t *rate)
 {
     SC2_Pixelrate_Response resp;
-    unsigned int err = pco_read_property(pco, GET_PIXELRATE, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_PIXELRATE, &resp, sizeof(resp));
+
     if (err == PCO_NOERROR)
         *rate = resp.dwPixelrate;
+
     return err;
 }
 
@@ -992,13 +1056,16 @@ unsigned int pco_get_pixelrate(pco_handle pco, uint32_t *rate)
  * @note You can only specify a rate that is returned by
  * pco_get_available_pixelrates().
  */
-unsigned int pco_set_pixelrate(pco_handle pco, uint32_t rate)
+unsigned int
+pco_set_pixelrate (pco_handle pco, uint32_t rate)
 {
     SC2_Set_Pixelrate req = { .wCode = SET_PIXELRATE, .wSize = sizeof(req), .dwPixelrate = rate };
     SC2_Pixelrate_Response resp;
-    unsigned int err = pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    unsigned int err = pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
+
     if (err == PCO_NOERROR)
-        pco_reset_serial(pco);
+        pco_reset_serial (pco);
+
     return err;
 }
 
@@ -1011,7 +1078,8 @@ unsigned int pco_set_pixelrate(pco_handle pco, uint32_t rate)
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  */
-unsigned int pco_get_available_conversion_factors(pco_handle pco, uint16_t factors[4], int *num_rates)
+unsigned int
+pco_get_available_conversion_factors (pco_handle pco, uint16_t factors[4], int *num_rates)
 {
     int j = 0;
     for (int i = 0; i < 4; i++)
@@ -1028,10 +1096,11 @@ unsigned int pco_get_available_conversion_factors(pco_handle pco, uint16_t facto
  * @param pco A #pco_handle.
  * @return Non-zero number if active, zero if not.
  */
-unsigned int pco_is_active(pco_handle pco)
+unsigned int
+pco_is_active (pco_handle pco)
 {
     SC2_Camera_Type_Response resp;
-    return pco_read_property(pco, GET_CAMERA_TYPE, &resp, sizeof(resp)) == PCO_NOERROR;
+    return pco_read_property (pco, GET_CAMERA_TYPE, &resp, sizeof(resp)) == PCO_NOERROR;
 }
 
 /**
@@ -1043,10 +1112,14 @@ unsigned int pco_is_active(pco_handle pco)
  * @param mode PCO_SCANMODE_SLOW or PCO_SCANMODE_FAST
  * @return Error code or PCO_NOERROR.
  */
-unsigned int pco_set_scan_mode(pco_handle pco, uint32_t mode)
+unsigned int
+pco_set_scan_mode (pco_handle pco, uint32_t mode)
 {
+    SC2_Set_Pixelrate com;
+    SC2_Pixelrate_Response resp;
     unsigned int err = PCO_NOERROR;
     const uint32_t pixel_clock = pco->description.dwPixelRateDESC[mode];
+
     if (pixel_clock == 0)
         return PCO_ERROR_IS_ERROR;
 
@@ -1062,13 +1135,11 @@ unsigned int pco_set_scan_mode(pco_handle pco, uint32_t mode)
     if ((err = pco_set_cl_config(pco)) != PCO_NOERROR)
         return err;
 
-    SC2_Set_Pixelrate com;
     com.wCode = SET_PIXELRATE;
     com.wSize = sizeof(SC2_Set_Pixelrate);
     com.dwPixelrate = pixel_clock;
-    SC2_Pixelrate_Response resp;
 
-    return pco_control_command(pco, &com, sizeof(SC2_Set_Pixelrate), &resp, sizeof(SC2_Pixelrate_Response));
+    return pco_control_command (pco, &com, sizeof(SC2_Set_Pixelrate), &resp, sizeof(SC2_Pixelrate_Response));
 }
 
 /**
@@ -1079,12 +1150,13 @@ unsigned int pco_set_scan_mode(pco_handle pco, uint32_t mode)
  * @return Error code or PCO_NOERROR.
  * @see pco_set_scan_mode()
  */
-unsigned int pco_get_scan_mode(pco_handle pco, uint32_t *mode)
+unsigned int
+pco_get_scan_mode (pco_handle pco, uint32_t *mode)
 {
     unsigned int err = PCO_NOERROR;
     SC2_Pixelrate_Response pixelrate;
 
-    if ((err = pco_read_property(pco, GET_PIXELRATE, &pixelrate, sizeof(pixelrate))) == PCO_NOERROR) {
+    if ((err = pco_read_property (pco, GET_PIXELRATE, &pixelrate, sizeof(pixelrate))) == PCO_NOERROR) {
         for (int i = 0; i < 4; i++) {
             if (pixelrate.dwPixelrate == pco->description.dwPixelRateDESC[i]) {
                 *mode = i;
@@ -1094,6 +1166,7 @@ unsigned int pco_get_scan_mode(pco_handle pco, uint32_t *mode)
         *mode = 0xFFFF;
         return PCO_ERROR_IS_ERROR;
     }
+
     return err;
 }
 
@@ -1118,11 +1191,12 @@ unsigned int pco_get_scan_mode(pco_handle pco, uint32_t *mode)
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  */
-unsigned int pco_set_trigger_mode(pco_handle pco, uint16_t mode)
+unsigned int
+pco_set_trigger_mode (pco_handle pco, uint16_t mode)
 {
     SC2_Set_Trigger_Mode req = { .wCode = SET_TRIGGER_MODE, .wSize = sizeof(req), .wMode = mode };
     SC2_Trigger_Mode_Response resp;
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    return pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 /**
@@ -1134,12 +1208,15 @@ unsigned int pco_set_trigger_mode(pco_handle pco, uint16_t mode)
  * @since 0.2
  * @see pco_set_trigger_mode()
  */
-unsigned int pco_get_trigger_mode(pco_handle pco, uint16_t *mode)
+unsigned int
+pco_get_trigger_mode (pco_handle pco, uint16_t *mode)
 {
     SC2_Trigger_Mode_Response resp;
-    unsigned int err = pco_read_property(pco, GET_TRIGGER_MODE, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_TRIGGER_MODE, &resp, sizeof(resp));
+
     if (err == PCO_NOERROR)
         *mode = resp.wMode;
+
     return err;
 }
 
@@ -1150,10 +1227,11 @@ unsigned int pco_get_trigger_mode(pco_handle pco, uint16_t *mode)
  * @param transfer 0 if no automatic transfer, else 1.
  * @return Error code or PCO_NOERROR.
  */
-unsigned int pco_set_auto_transfer(pco_handle pco, int transfer)
+unsigned int
+pco_set_auto_transfer (pco_handle pco, int transfer)
 {
     pco->transfer.Transmit = transfer ? 1 : 0;
-    return pco_set_cl_config(pco);
+    return pco_set_cl_config (pco);
 }
 
 /**
@@ -1163,7 +1241,8 @@ unsigned int pco_set_auto_transfer(pco_handle pco, int transfer)
  * @param transfer 0 if no automatic transfer, else 1.
  * @return Error code or PCO_NOERROR.
  */
-unsigned int pco_get_auto_transfer(pco_handle pco, int *transfer)
+unsigned int
+pco_get_auto_transfer (pco_handle pco, int *transfer)
 {
     *transfer = pco->transfer.Transmit ? 1 : 0;
     return PCO_NOERROR;
@@ -1177,12 +1256,15 @@ unsigned int pco_get_auto_transfer(pco_handle pco, int *transfer)
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  */
-unsigned int pco_force_trigger(pco_handle pco, uint32_t *success)
+unsigned int
+pco_force_trigger (pco_handle pco, uint32_t *success)
 {
     SC2_Force_Trigger_Response resp;
-    unsigned int err = pco_read_property(pco, FORCE_TRIGGER, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, FORCE_TRIGGER, &resp, sizeof(resp));
+
     if (err == PCO_NOERROR)
         *success = resp.wReturn;
+
     return err;
 }
 
@@ -1198,9 +1280,11 @@ unsigned int pco_force_trigger(pco_handle pco, uint32_t *success)
 unsigned int pco_get_storage_mode(pco_handle pco, uint16_t *mode)
 {
     SC2_Storage_Mode_Response resp;
-    unsigned int err = pco_read_property(pco, GET_STORAGE_MODE, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_STORAGE_MODE, &resp, sizeof(resp));
+
     if (err == PCO_NOERROR)
         *mode = resp.wMode;
+
     return err;
 }
 
@@ -1224,11 +1308,12 @@ unsigned int pco_get_storage_mode(pco_handle pco, uint16_t *mode)
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  */
-unsigned int pco_set_storage_mode(pco_handle pco, uint16_t mode)
+unsigned int
+pco_set_storage_mode(pco_handle pco, uint16_t mode)
 {
     SC2_Set_Storage_Mode req = { .wCode = SET_STORAGE_MODE, .wSize = sizeof(req), .wMode = mode };
     SC2_Storage_Mode_Response resp;
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    return pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 /**
@@ -1240,12 +1325,15 @@ unsigned int pco_set_storage_mode(pco_handle pco, uint16_t mode)
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
-unsigned int pco_get_record_mode(pco_handle pco, uint16_t *mode)
+unsigned int
+pco_get_record_mode (pco_handle pco, uint16_t *mode)
 {
     SC2_Recorder_Submode_Response resp;
-    unsigned int err = pco_read_property(pco, GET_RECORDER_SUBMODE, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_RECORDER_SUBMODE, &resp, sizeof(resp));
+
     if (err == PCO_NOERROR)
         *mode = resp.wMode;
+
     return err;
 }
 
@@ -1256,17 +1344,18 @@ unsigned int pco_get_record_mode(pco_handle pco, uint16_t *mode)
  * @param mode Any of:
  *     - RECORDER_SUBMODE_RINGBUFFER: camera records continuously into ring
  *       buffer. If the allocated buffer is full, the oldest images are
-         overwritten.
+ *       overwritten.
  *     - RECORDER_SUBMODE_SEQUENCE: recording is stopped when the allocated
-         buffer is full
+ *       buffer is full
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
-unsigned int pco_set_record_mode(pco_handle pco, uint16_t mode)
+unsigned int
+pco_set_record_mode (pco_handle pco, uint16_t mode)
 {
     SC2_Set_Recorder_Submode req = { .wCode = SET_RECORDER_SUBMODE, .wSize = sizeof(req), .wMode = mode };
     SC2_Recorder_Submode_Response resp;
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    return pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 /**
@@ -1277,12 +1366,15 @@ unsigned int pco_set_record_mode(pco_handle pco, uint16_t mode)
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
-unsigned int pco_is_recording(pco_handle pco, bool *is_recording)
+unsigned int
+pco_is_recording (pco_handle pco, bool *is_recording)
 {
     uint16_t state;
-    unsigned int err = pco_get_rec_state(pco, &state);
+    unsigned int err = pco_get_rec_state (pco, &state);
+
     if (err == PCO_NOERROR)
         *is_recording = state != 0;
+
     return err;
 }
 
@@ -1298,9 +1390,10 @@ unsigned int pco_is_recording(pco_handle pco, bool *is_recording)
  * @return Error code or PCO_NOERROR.
  * @note Before starting any recording you have to call pco_arm_camera()!
  */
-unsigned int pco_start_recording(pco_handle pco)
+unsigned int
+pco_start_recording (pco_handle pco)
 {
-    return pco_set_rec_state(pco, 1);
+    return pco_set_rec_state (pco, 1);
 }
 
 /**
@@ -1309,9 +1402,10 @@ unsigned int pco_start_recording(pco_handle pco)
  * @param pco A #pco_handle.
  * @return Error code or PCO_NOERROR.
  */
-unsigned int pco_stop_recording(pco_handle pco)
+unsigned int
+pco_stop_recording (pco_handle pco)
 {
-    return pco_set_rec_state(pco, 0);
+    return pco_set_rec_state (pco, 0);
 }
 
 /**
@@ -1323,12 +1417,15 @@ unsigned int pco_stop_recording(pco_handle pco)
  * @since 0.2
  * @see pco_set_acquire_mode()
  */
-unsigned int pco_get_acquire_mode(pco_handle pco, uint16_t *mode)
+unsigned int
+pco_get_acquire_mode (pco_handle pco, uint16_t *mode)
 {
     SC2_Acquire_Mode_Response resp;
-    unsigned int err = pco_read_property(pco, GET_ACQUIRE_MODE, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_ACQUIRE_MODE, &resp, sizeof(resp));
+
     if (err == PCO_NOERROR)
         *mode = resp.wMode;
+
     return err;
 }
 
@@ -1346,11 +1443,12 @@ unsigned int pco_get_acquire_mode(pco_handle pco, uint16_t *mode)
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  */
-unsigned int pco_set_acquire_mode(pco_handle pco, uint16_t mode)
+unsigned int
+pco_set_acquire_mode (pco_handle pco, uint16_t mode)
 {
     SC2_Set_Acquire_Mode req = { .wCode = SET_ACQUIRE_MODE, .wSize = sizeof(req), .wMode = mode };
     SC2_Acquire_Mode_Response resp;
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    return pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 /** @} */
@@ -1367,14 +1465,15 @@ unsigned int pco_set_acquire_mode(pco_handle pco, uint16_t mode)
  *    - TIMESTAMP_MODE_BINARYANDASCII
  * @return Error code or PCO_NOERROR.
  */
-unsigned int pco_set_timestamp_mode(pco_handle pco, uint16_t mode)
+unsigned int
+pco_set_timestamp_mode (pco_handle pco, uint16_t mode)
 {
     SC2_Timestamp_Mode_Response resp;
     SC2_Set_Timestamp_Mode com;
     com.wMode = mode;
     com.wCode = SET_TIMESTAMP_MODE;
     com.wSize = sizeof(com);
-    return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
+    return pco_control_command (pco, &com, sizeof(com), &resp, sizeof(resp));
 }
 
 /**
@@ -1384,12 +1483,15 @@ unsigned int pco_set_timestamp_mode(pco_handle pco, uint16_t mode)
  * @param mode Locaton for the timestamp mode
  * @return Error code or PCO_NOERROR.
  */
-unsigned int pco_get_timestamp_mode(pco_handle pco, uint16_t *mode)
+unsigned int
+pco_get_timestamp_mode (pco_handle pco, uint16_t *mode)
 {
     SC2_Timestamp_Mode_Response resp;
-    unsigned int err = pco_read_property(pco, GET_TIMESTAMP_MODE, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_TIMESTAMP_MODE, &resp, sizeof(resp));
+
     if (err == PCO_NOERROR)
         *mode = resp.wMode;
+
     return err;
 }
 
@@ -1409,7 +1511,8 @@ unsigned int pco_get_timestamp_mode(pco_handle pco, uint16_t *mode)
  * However, resetting the serial connection breaks subsequent commands on the
  * pco.4000 ...
  */
-unsigned int pco_set_timebase(pco_handle pco, uint16_t delay, uint16_t exposure)
+unsigned int
+pco_set_timebase (pco_handle pco, uint16_t delay, uint16_t exposure)
 {
     unsigned int err;
     SC2_Set_Timebase com;
@@ -1419,8 +1522,8 @@ unsigned int pco_set_timebase(pco_handle pco, uint16_t delay, uint16_t exposure)
     com.wSize = sizeof(SC2_Set_Timebase);
     com.wTimebaseDelay = delay;
     com.wTimebaseExposure = exposure;
-    err = pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
-    pco_reset_serial(pco);
+    err = pco_control_command (pco, &com, sizeof(com), &resp, sizeof(resp));
+    pco_reset_serial (pco);
     return err;
 }
 
@@ -1432,10 +1535,11 @@ unsigned int pco_set_timebase(pco_handle pco, uint16_t delay, uint16_t exposure)
  * @param exposure Location to store exposure scale
  * @return Error code or PCO_NOERROR
  */
-unsigned int pco_get_timebase(pco_handle pco, uint16_t *delay, uint16_t *exposure)
+unsigned int
+pco_get_timebase (pco_handle pco, uint16_t *delay, uint16_t *exposure)
 {
     SC2_Timebase_Response resp;
-    unsigned int err = pco_read_property(pco, GET_TIMEBASE, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_TIMEBASE, &resp, sizeof(resp));
 
     if (err == PCO_NOERROR) {
         *delay = resp.wTimebaseDelay;
@@ -1454,7 +1558,8 @@ unsigned int pco_get_timebase(pco_handle pco, uint16_t *delay, uint16_t *exposur
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
-unsigned int pco_get_delay_time(pco_handle pco, uint32_t *delay)
+unsigned int
+pco_get_delay_time (pco_handle pco, uint32_t *delay)
 {
     *delay = pco->delay;
     return PCO_NOERROR;
@@ -1468,10 +1573,11 @@ unsigned int pco_get_delay_time(pco_handle pco, uint32_t *delay)
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
-unsigned int pco_set_delay_time(pco_handle pco, uint32_t delay)
+unsigned int
+pco_set_delay_time (pco_handle pco, uint32_t delay)
 {
     pco->delay = delay;
-    return pco_set_delay_exposure(pco, delay, pco->exposure);
+    return pco_set_delay_exposure (pco, delay, pco->exposure);
 }
 
 /**
@@ -1484,7 +1590,8 @@ unsigned int pco_set_delay_time(pco_handle pco, uint32_t delay)
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
-unsigned int pco_get_delay_range(pco_handle pco, uint32_t *min_ns, uint32_t *max_ms, uint32_t *step_ns)
+unsigned int
+pco_get_delay_range (pco_handle pco, uint32_t *min_ns, uint32_t *max_ms, uint32_t *step_ns)
 {
     *min_ns = pco->description.dwMinDelayDESC;
     *max_ms = pco->description.dwMaxDelayDESC;
@@ -1500,7 +1607,8 @@ unsigned int pco_get_delay_range(pco_handle pco, uint32_t *min_ns, uint32_t *max
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
-unsigned int pco_get_exposure_time(pco_handle pco, uint32_t *exposure)
+unsigned int
+pco_get_exposure_time (pco_handle pco, uint32_t *exposure)
 {
     *exposure = pco->exposure;
     return PCO_NOERROR;
@@ -1514,10 +1622,11 @@ unsigned int pco_get_exposure_time(pco_handle pco, uint32_t *exposure)
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
-unsigned int pco_set_exposure_time(pco_handle pco, uint32_t exposure)
+unsigned int
+pco_set_exposure_time (pco_handle pco, uint32_t exposure)
 {
     pco->exposure = exposure;
-    return pco_set_delay_exposure(pco, pco->delay, exposure);
+    return pco_set_delay_exposure (pco, pco->delay, exposure);
 }
 
 /**
@@ -1530,7 +1639,8 @@ unsigned int pco_set_exposure_time(pco_handle pco, uint32_t exposure)
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
-unsigned int pco_get_exposure_range(pco_handle pco, uint32_t *min_ns, uint32_t *max_ms, uint32_t *step_ns)
+unsigned int
+pco_get_exposure_range (pco_handle pco, uint32_t *min_ns, uint32_t *max_ms, uint32_t *step_ns)
 {
     *min_ns = pco->description.dwMinExposureDESC;
     *max_ms = pco->description.dwMaxExposureDESC;
@@ -1538,7 +1648,8 @@ unsigned int pco_get_exposure_range(pco_handle pco, uint32_t *min_ns, uint32_t *
     return PCO_NOERROR;
 }
 
-unsigned int pco_set_framerate(pco_handle pco, uint32_t framerate_mhz, uint32_t exposure_ns, bool framerate_priority)
+unsigned int
+pco_set_framerate (pco_handle pco, uint32_t framerate_mhz, uint32_t exposure_ns, bool framerate_priority)
 {
     SC2_Set_Framerate_Response resp;
     SC2_Set_Framerate req = {
@@ -1552,7 +1663,8 @@ unsigned int pco_set_framerate(pco_handle pco, uint32_t framerate_mhz, uint32_t 
     return pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
-unsigned int pco_get_framerate(pco_handle pco, uint32_t *framerate_mhz, uint32_t *exposure_ns)
+unsigned int
+pco_get_framerate (pco_handle pco, uint32_t *framerate_mhz, uint32_t *exposure_ns)
 {
     SC2_Get_Framerate_Response resp;
     unsigned int err = PCO_NOERROR;
@@ -1575,7 +1687,8 @@ unsigned int pco_get_framerate(pco_handle pco, uint32_t *framerate_mhz, uint32_t
  *   upper-left corner and last two elements the lower-right corner of the ROI
  * @return Error code or PCO_NOERROR.
  */
-unsigned int pco_set_roi(pco_handle pco, uint16_t *window)
+unsigned int
+pco_set_roi (pco_handle pco, uint16_t *window)
 {
     SC2_Set_ROI req = {
         .wCode = SET_ROI, .wSize = sizeof(req),
@@ -1584,7 +1697,7 @@ unsigned int pco_set_roi(pco_handle pco, uint16_t *window)
     };
     SC2_ROI_Response resp;
 
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    return pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 /**
@@ -1596,11 +1709,12 @@ unsigned int pco_set_roi(pco_handle pco, uint16_t *window)
  * @param window Four-element array
  * @return Error code or PCO_NOERROR.
  */
-unsigned int pco_get_roi(pco_handle pco, uint16_t *window)
+unsigned int
+pco_get_roi (pco_handle pco, uint16_t *window)
 {
     unsigned int err = PCO_NOERROR;
     SC2_ROI_Response resp;
-    err = pco_read_property(pco, GET_ROI, &resp, sizeof(resp));
+    err = pco_read_property (pco, GET_ROI, &resp, sizeof(resp));
 
     if (err == PCO_NOERROR) {
         window[0] = resp.wROI_x0;
@@ -1608,6 +1722,7 @@ unsigned int pco_get_roi(pco_handle pco, uint16_t *window)
         window[2] = resp.wROI_x1;
         window[3] = resp.wROI_y1;
     }
+
     return err;
 }
 
@@ -1619,7 +1734,8 @@ unsigned int pco_get_roi(pco_handle pco, uint16_t *window)
  * @param vertical Location to store number of vertical ROI steps
  * @return Error code or PCO_NOERROR.
  */
-unsigned int pco_get_roi_steps(pco_handle pco, uint16_t *horizontal, uint16_t *vertical)
+unsigned int
+pco_get_roi_steps (pco_handle pco, uint16_t *horizontal, uint16_t *vertical)
 {
     *horizontal = pco->description.wRoiHorStepsDESC;
     *vertical = pco->description.wRoiVertStepsDESC;
@@ -1639,7 +1755,8 @@ unsigned int pco_get_roi_steps(pco_handle pco, uint16_t *horizontal, uint16_t *v
  *
  * @since 0.3
  */
-unsigned int pco_set_binning(pco_handle pco, uint16_t horizontal, uint16_t vertical)
+unsigned int
+pco_set_binning (pco_handle pco, uint16_t horizontal, uint16_t vertical)
 {
     SC2_Set_Binning req = {
         .wCode = SET_BINNING, .wSize = sizeof(req),
@@ -1647,13 +1764,13 @@ unsigned int pco_set_binning(pco_handle pco, uint16_t horizontal, uint16_t verti
     };
 
     SC2_Binning_Response resp;
-    unsigned int err = pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    unsigned int err = pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
 
     /*
      * For no apparent reason, communication stops after setting the binning.
      * Similar to pco_set_timebase() we have to reset the CameraLink connection.
      */
-    pco_reset_serial(pco);
+    pco_reset_serial (pco);
     return err;
 }
 
@@ -1666,15 +1783,17 @@ unsigned int pco_set_binning(pco_handle pco, uint16_t horizontal, uint16_t verti
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
-unsigned int pco_get_binning(pco_handle pco, uint16_t *horizontal, uint16_t *vertical)
+unsigned int
+pco_get_binning (pco_handle pco, uint16_t *horizontal, uint16_t *vertical)
 {
     SC2_Binning_Response resp;
-    unsigned int err = pco_read_property(pco, GET_BINNING, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_BINNING, &resp, sizeof(resp));
 
     if (err == PCO_NOERROR) {
         *horizontal = resp.wBinningx;
         *vertical = resp.wBinningy;
     }
+
     return err;
 }
 
@@ -1695,17 +1814,16 @@ unsigned int pco_get_binning(pco_handle pco, uint16_t *horizontal, uint16_t *ver
  *
  * @since 0.3
  */
-unsigned int pco_get_possible_binnings(pco_handle pco,
-        uint16_t **horizontal, unsigned int *num_horizontal,
-        uint16_t **vertical, unsigned int *num_vertical)
+unsigned int
+pco_get_possible_binnings(pco_handle pco, uint16_t **horizontal, unsigned int *num_horizontal, uint16_t **vertical, unsigned int *num_vertical)
 {
-    unsigned int num_h = pco_get_num_binnings(pco->description.wMaxBinHorzDESC, pco->description.wBinHorzSteppingDESC);
-    uint16_t *r_horizontal = (uint16_t *) malloc(num_h * sizeof(uint16_t));
-    pco_fill_binning_array(r_horizontal, num_h, pco->description.wBinHorzSteppingDESC);
+    unsigned int num_h = pco_get_num_binnings (pco->description.wMaxBinHorzDESC, pco->description.wBinHorzSteppingDESC);
+    uint16_t *r_horizontal = (uint16_t *) malloc (num_h * sizeof(uint16_t));
+    pco_fill_binning_array (r_horizontal, num_h, pco->description.wBinHorzSteppingDESC);
 
-    unsigned int num_v = pco_get_num_binnings(pco->description.wMaxBinVertDESC, pco->description.wBinVertSteppingDESC);
-    uint16_t *r_vertical = (uint16_t *) malloc(num_v * sizeof(uint16_t));
-    pco_fill_binning_array(r_vertical, num_v, pco->description.wBinVertSteppingDESC);
+    unsigned int num_v = pco_get_num_binnings (pco->description.wMaxBinVertDESC, pco->description.wBinVertSteppingDESC);
+    uint16_t *r_vertical = (uint16_t *) malloc (num_v * sizeof(uint16_t));
+    pco_fill_binning_array (r_vertical, num_v, pco->description.wBinVertSteppingDESC);
 
     *horizontal = r_horizontal;
     *vertical = r_vertical;
@@ -1722,7 +1840,8 @@ unsigned int pco_get_possible_binnings(pco_handle pco,
  * @return TRUE if double image mode is available
  * @since 0.3
  */
-bool pco_is_double_image_mode_available(pco_handle pco)
+bool
+pco_is_double_image_mode_available (pco_handle pco)
 {
     return pco->description.wDoubleImageDESC == 1;
 }
@@ -1735,11 +1854,12 @@ bool pco_is_double_image_mode_available(pco_handle pco)
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
-unsigned int pco_set_double_image_mode(pco_handle pco, bool on)
+unsigned int
+pco_set_double_image_mode (pco_handle pco, bool on)
 {
      SC2_Set_Double_Image_Mode req = { .wCode = SET_DOUBLE_IMAGE_MODE, .wMode = on ? 1 : 0, .wSize = sizeof(req) };
      SC2_Double_Image_Mode_Response resp;
-     return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+     return pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 /**
@@ -1752,13 +1872,15 @@ unsigned int pco_set_double_image_mode(pco_handle pco, bool on)
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
-unsigned int pco_get_double_image_mode(pco_handle pco, bool *on)
+unsigned int
+pco_get_double_image_mode (pco_handle pco, bool *on)
 {
     SC2_Double_Image_Mode_Response resp;
-    unsigned int err = pco_read_property(pco, GET_DOUBLE_IMAGE_MODE, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_DOUBLE_IMAGE_MODE, &resp, sizeof(resp));
 
     if (err == PCO_NOERROR)
         *on = resp.wMode == 1;
+
     return err;
 }
 
@@ -1770,12 +1892,13 @@ unsigned int pco_get_double_image_mode(pco_handle pco, bool *on)
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
-unsigned int pco_set_offset_mode(pco_handle pco, bool on)
+unsigned int
+pco_set_offset_mode (pco_handle pco, bool on)
 {
     /* Yes, indeed. 0 means AUTO and 1 means OFF */
     SC2_Set_Offset_Mode req = { .wCode = SET_OFFSET_MODE, .wMode = on ? 0 : 1, .wSize = sizeof(req) };
     SC2_Offset_Mode_Response resp;
-     return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    return pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 /**
@@ -1786,13 +1909,15 @@ unsigned int pco_set_offset_mode(pco_handle pco, bool on)
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
-unsigned int pco_get_offset_mode(pco_handle pco, bool *on)
+unsigned int
+pco_get_offset_mode (pco_handle pco, bool *on)
 {
     SC2_Offset_Mode_Response resp;
-    unsigned int err = pco_read_property(pco, GET_OFFSET_MODE, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_OFFSET_MODE, &resp, sizeof(resp));
 
     if (err == PCO_NOERROR)
         *on = resp.wMode == 0;
+
     return err;
 }
 
@@ -1806,7 +1931,8 @@ unsigned int pco_get_offset_mode(pco_handle pco, bool *on)
  *    - HOT_PIXEL_CORRECTION_TEST
  * @return Error code or PCO_NOERROR.
  */
-unsigned int pco_set_hotpixel_correction(pco_handle pco, uint32_t mode)
+unsigned int
+pco_set_hotpixel_correction (pco_handle pco, uint32_t mode)
 {
     SC2_Set_Hot_Pixel_Correction_Mode com;
     SC2_Hot_Pixel_Correction_Mode_Response resp;
@@ -1814,7 +1940,7 @@ unsigned int pco_set_hotpixel_correction(pco_handle pco, uint32_t mode)
     com.wCode = SET_HOT_PIXEL_CORRECTION_MODE;
     com.wSize = sizeof(com);
     com.wMode = mode;
-    return pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
+    return pco_control_command (pco, &com, sizeof(com), &resp, sizeof(resp));
 }
 
 /**
@@ -1826,13 +1952,15 @@ unsigned int pco_set_hotpixel_correction(pco_handle pco, uint32_t mode)
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
-unsigned int pco_get_noise_filter_mode(pco_handle pco, uint16_t *mode)
+unsigned int
+pco_get_noise_filter_mode (pco_handle pco, uint16_t *mode)
 {
     SC2_Noise_Filter_Mode_Response resp;
-    unsigned int err = pco_read_property(pco, GET_NOISE_FILTER_MODE, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_NOISE_FILTER_MODE, &resp, sizeof(resp));
 
     if (err == PCO_NOERROR)
         *mode = resp.wMode;
+
     return err;
 }
 
@@ -1845,11 +1973,12 @@ unsigned int pco_get_noise_filter_mode(pco_handle pco, uint16_t *mode)
  * @return Error code or PCO_NOERROR.
  * @since 0.3
  */
-unsigned int pco_set_noise_filter_mode(pco_handle pco, uint16_t mode)
+unsigned int
+pco_set_noise_filter_mode (pco_handle pco, uint16_t mode)
 {
     SC2_Set_Noise_Filter_Mode req = { .wCode = SET_NOISE_FILTER_MODE, .wSize = sizeof(req), .wMode = mode };
     SC2_Noise_Filter_Mode_Response resp;
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    return pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 /**
@@ -1859,7 +1988,8 @@ unsigned int pco_set_noise_filter_mode(pco_handle pco, uint16_t mode)
  * @return Error code or PCO_NOERROR.
  * @note This method must be called before starting the recording.
  */
-unsigned int pco_arm_camera(pco_handle pco)
+unsigned int
+pco_arm_camera (pco_handle pco)
 {
     unsigned int err;
     SC2_Simple_Telegram req;
@@ -1868,7 +1998,7 @@ unsigned int pco_arm_camera(pco_handle pco)
     req.wCode = ARM_CAMERA;
     req.wSize = sizeof(SC2_Simple_Telegram);
     pco->extra_timeout = 5000;
-    err = pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    err = pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
     pco->extra_timeout = 0;
     return err;
 }
@@ -1882,14 +2012,16 @@ unsigned int pco_arm_camera(pco_handle pco)
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  */
-unsigned int pco_get_num_images(pco_handle pco, uint16_t segment, uint32_t *num_images)
+unsigned int
+pco_get_num_images (pco_handle pco, uint16_t segment, uint32_t *num_images)
 {
-    SC2_Number_of_Images req = { .wCode = GET_NUMBER_OF_IMAGES_IN_SEGMENT,
-        .wSize = sizeof(req), .wSegment = segment };
+    SC2_Number_of_Images req = { .wCode = GET_NUMBER_OF_IMAGES_IN_SEGMENT, .wSize = sizeof(req), .wSegment = segment };
     SC2_Number_of_Images_Response resp;
-    unsigned int err = pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    unsigned int err = pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
+
     if (err == PCO_NOERROR)
         *num_images = resp.dwValid;
+
     return err;
 }
 
@@ -1904,11 +2036,12 @@ unsigned int pco_get_num_images(pco_handle pco, uint16_t segment, uint32_t *num_
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  */
-unsigned int pco_request_image(pco_handle pco)
+unsigned int
+pco_request_image (pco_handle pco)
 {
     SC2_Request_Image req = { .wCode = REQUEST_IMAGE, .wSize = sizeof(req) };
     SC2_Request_Image_Response resp;
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    return pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 /**
@@ -1928,7 +2061,8 @@ unsigned int pco_request_image(pco_handle pco)
  * read a range of images due to the hardware implementation. You always have to
  * specify start == end.
  */
-unsigned int pco_read_images(pco_handle pco, uint16_t segment, uint32_t start, uint32_t end)
+unsigned int
+pco_read_images (pco_handle pco, uint16_t segment, uint32_t start, uint32_t end)
 {
     SC2_Read_Images_from_Segment req = {
         .wCode = READ_IMAGES_FROM_SEGMENT,
@@ -1938,7 +2072,7 @@ unsigned int pco_read_images(pco_handle pco, uint16_t segment, uint32_t start, u
         .dwLastImage = end
     };
     SC2_Read_Images_from_Segment_Response resp;
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    return pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 
@@ -1951,16 +2085,19 @@ unsigned int pco_read_images(pco_handle pco, uint16_t segment, uint32_t start, u
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  */
-unsigned int pco_get_segment_sizes(pco_handle pco, size_t sizes[4])
+unsigned int
+pco_get_segment_sizes (pco_handle pco, size_t sizes[4])
 {
     SC2_Camera_RAM_Segment_Size_Response resp;
-    unsigned int err = pco_read_property(pco, GET_CAMERA_RAM_SEGMENT_SIZE, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_CAMERA_RAM_SEGMENT_SIZE, &resp, sizeof(resp));
+
     if (err == PCO_NOERROR) {
         sizes[0] = resp.dwSegment1Size;
         sizes[1] = resp.dwSegment2Size;
         sizes[2] = resp.dwSegment3Size;
         sizes[3] = resp.dwSegment4Size;
     }
+
     return err;
 }
 
@@ -1972,12 +2109,15 @@ unsigned int pco_get_segment_sizes(pco_handle pco, size_t sizes[4])
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  */
-unsigned int pco_get_active_segment(pco_handle pco, uint16_t *segment)
+unsigned int
+pco_get_active_segment (pco_handle pco, uint16_t *segment)
 {
     SC2_Active_RAM_Segment_Response resp;
-    unsigned int err = pco_read_property(pco, GET_ACTIVE_RAM_SEGMENT, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_ACTIVE_RAM_SEGMENT, &resp, sizeof(resp));
+
     if (err == PCO_NOERROR)
         *segment = resp.wSegment;
+
     return err;
 }
 
@@ -1988,11 +2128,12 @@ unsigned int pco_get_active_segment(pco_handle pco, uint16_t *segment)
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  */
-unsigned int pco_clear_active_segment(pco_handle pco)
+unsigned int
+pco_clear_active_segment (pco_handle pco)
 {
     SC2_Simple_Telegram req = { .wCode = CLEAR_RAM_SEGMENT, .wSize = sizeof(req) };
     SC2_Clear_RAM_Segment_Response resp;
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    return pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 /**
@@ -2003,12 +2144,15 @@ unsigned int pco_clear_active_segment(pco_handle pco)
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  */
-unsigned int pco_get_bit_alignment(pco_handle pco, bool *msb_aligned)
+unsigned int
+pco_get_bit_alignment (pco_handle pco, bool *msb_aligned)
 {
     SC2_Bit_Alignment_Response resp;
-    unsigned int err = pco_read_property(pco, GET_BIT_ALIGNMENT, &resp, sizeof(resp));
+    unsigned int err = pco_read_property (pco, GET_BIT_ALIGNMENT, &resp, sizeof(resp));
+
     if (err == PCO_NOERROR)
         *msb_aligned = resp.wAlignment == 0;
+
     return err;
 }
 
@@ -2021,7 +2165,8 @@ unsigned int pco_get_bit_alignment(pco_handle pco, bool *msb_aligned)
  * @return Error code or PCO_NOERROR.
  * @since 0.2
  */
-unsigned int pco_set_bit_alignment(pco_handle pco, bool msb_aligned)
+unsigned int
+pco_set_bit_alignment (pco_handle pco, bool msb_aligned)
 {
     SC2_Set_Bit_Alignment req = {
         .wCode = SET_BIT_ALIGNMENT,
@@ -2029,7 +2174,7 @@ unsigned int pco_set_bit_alignment(pco_handle pco, bool msb_aligned)
         .wAlignment = msb_aligned ? 0 : 1
     };
     SC2_Bit_Alignment_Response resp;
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    return pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 /**
@@ -2040,7 +2185,8 @@ unsigned int pco_set_bit_alignment(pco_handle pco, bool msb_aligned)
  * @param height Height of the frame.
  * @return Error code or PCO_NOERROR.
  */
-unsigned int pco_get_actual_size(pco_handle pco, uint32_t *width, uint32_t *height)
+unsigned int
+pco_get_actual_size (pco_handle pco, uint32_t *width, uint32_t *height)
 {
    unsigned int err = PCO_NOERROR;
 
@@ -2048,12 +2194,13 @@ unsigned int pco_get_actual_size(pco_handle pco, uint32_t *width, uint32_t *heig
    SC2_ROI_Response resp;
    com.wCode = GET_ROI;
    com.wSize = sizeof(SC2_Simple_Telegram);
-   err = pco_control_command(pco, &com, sizeof(com), &resp, sizeof(resp));
+   err = pco_control_command (pco, &com, sizeof(com), &resp, sizeof(resp));
 
    if (err == PCO_NOERROR) {
        *width = resp.wROI_x1 - resp.wROI_x0 + 1;
        *height = resp.wROI_y1 - resp.wROI_y0 + 1;
    }
+
    return err;
 }
 
@@ -2064,7 +2211,8 @@ unsigned int pco_get_actual_size(pco_handle pco, uint32_t *width, uint32_t *heig
  * @param shutter Location for shutter mode.
  * @return Error code or PCO_NOERROR
  */
-unsigned int pco_edge_get_shutter(pco_handle pco, pco_edge_shutter *shutter)
+unsigned int
+pco_edge_get_shutter (pco_handle pco, pco_edge_shutter *shutter)
 {
    unsigned int err = PCO_NOERROR;
 
@@ -2074,7 +2222,7 @@ unsigned int pco_edge_get_shutter(pco_handle pco, pco_edge_shutter *shutter)
     };
     SC2_Get_Camera_Setup_Response resp;
 
-    err = pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    err = pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
 
     if (err == PCO_NOERROR)
         *shutter = resp.dwSetupFlags[0];
@@ -2089,7 +2237,8 @@ unsigned int pco_edge_get_shutter(pco_handle pco, pco_edge_shutter *shutter)
  * @param shutter Shutter mode.
  * @return Error code or PCO_NOERROR
  */
-unsigned int pco_edge_set_shutter(pco_handle pco, pco_edge_shutter shutter)
+unsigned int
+pco_edge_set_shutter (pco_handle pco, pco_edge_shutter shutter)
 {
     unsigned int err = PCO_NOERROR;
 
@@ -2105,7 +2254,7 @@ unsigned int pco_edge_set_shutter(pco_handle pco, pco_edge_shutter shutter)
         req.dwSetupFlags[i] = shutter;
 
     pco->extra_timeout = 5000;
-    err = pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
+    err = pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
     pco->extra_timeout = 0;
     return err;
 }
@@ -2116,10 +2265,11 @@ unsigned int pco_edge_set_shutter(pco_handle pco, pco_edge_shutter shutter)
  * @param pco A #pco_handle
  * @return Error code or PCO_NOERROR
  */
-unsigned int pco_set_date_time(pco_handle pco)
+unsigned int
+pco_set_date_time (pco_handle pco)
 {
     time_t current_time = time(NULL);
-    struct tm ct = *localtime(&current_time);
+    struct tm ct = *localtime (&current_time);
 
     SC2_Set_Date_Time req = {
         .wCode = SET_DATE_TIME,
@@ -2133,9 +2283,8 @@ unsigned int pco_set_date_time(pco_handle pco)
     };
 
     SC2_Date_Time_Response resp;
-    
-    return pco_control_command(pco, &req, sizeof(req), &resp, sizeof(resp));
-    
+
+    return pco_control_command (pco, &req, sizeof(req), &resp, sizeof(resp));
 }
 
 /**
@@ -2144,7 +2293,8 @@ unsigned int pco_set_date_time(pco_handle pco)
  * @param pco A #pco_handle
  * @return Pointer to a #pco_reorder_image_t function.
  */
-pco_reorder_image_t pco_get_reorder_func(pco_handle pco)
+pco_reorder_image_t
+pco_get_reorder_func (pco_handle pco)
 {
     return pco->reorder_image;
 }
@@ -2154,13 +2304,14 @@ pco_reorder_image_t pco_get_reorder_func(pco_handle pco)
  *
  * @return An initialized #pco_handle or NULL.
  */
-pco_handle pco_init(void)
+pco_handle
+pco_init (void)
 {
     pco_handle pco;
     uint16_t type;
     uint16_t subtype;
 
-    pco = (pco_handle) malloc(sizeof(struct pco_t));
+    pco = (pco_handle) malloc (sizeof(struct pco_t));
 
     if (pco == NULL)
         return NULL;
@@ -2176,8 +2327,8 @@ pco_handle pco_init(void)
     for (int i = 0; i < 4; i++)
         pco->serial_refs[i] = NULL;
 
-    if (clGetNumSerialPorts(&pco->num_ports) != CL_OK) {
-        fprintf(stderr, "Unable to query number of ports\n");
+    if (clGetNumSerialPorts (&pco->num_ports) != CL_OK) {
+        fprintf (stderr, "Unable to query number of ports\n");
         goto no_pco;
     }
 
@@ -2189,7 +2340,7 @@ pco_handle pco_init(void)
 
     for (int i = 0; i < pco->num_ports; i++) {
         if (clSerialInit(i, &pco->serial_refs[i]) != CL_OK) {
-            fprintf(stderr, "Unable to initialize serial connection\n");
+            fprintf (stderr, "Unable to initialize serial connection\n");
             goto no_pco;
         }
     }
@@ -2197,13 +2348,13 @@ pco_handle pco_init(void)
     /* Reference the first port for easier access */
     pco->serial_ref = pco->serial_refs[0];
 
-    if (pco_scan_and_set_baud_rate(pco) != PCO_NOERROR) {
-        fprintf(stderr, "Unable to scan and set baud rate\n");
+    if (pco_scan_and_set_baud_rate (pco) != PCO_NOERROR) {
+        fprintf (stderr, "Unable to scan and set baud rate\n");
         goto no_pco;
     }
 
-    if (pco_get_delay_exposure(pco, &pco->delay, &pco->exposure)) {
-        fprintf(stderr, "Unable to read default delay and exposure time\n");
+    if (pco_get_delay_exposure (pco, &pco->delay, &pco->exposure)) {
+        fprintf (stderr, "Unable to read default delay and exposure time\n");
         goto no_pco;
     }
 
@@ -2214,11 +2365,11 @@ pco_handle pco_init(void)
         goto no_pco;
 
     /* Okay pco. You like to torture me. With insane default settings. */
-    pco_set_bit_alignment(pco, false);
+    pco_set_bit_alignment (pco, false);
     /* Date and time should be set once when the camera in turned on. They are updated as long as the camera is supplied with power. */
-    pco_set_date_time(pco);
+    pco_set_date_time (pco);
 
-    if (pco_read_property(pco, GET_CAMERA_DESCRIPTION, &pco->description, sizeof(pco->description)) != PCO_NOERROR)
+    if (pco_read_property (pco, GET_CAMERA_DESCRIPTION, &pco->description, sizeof(pco->description)) != PCO_NOERROR)
         goto no_pco;
 
     /* Update baud rate in case of dimax */
@@ -2227,15 +2378,15 @@ pco_handle pco_init(void)
 
     if (type == CAMERATYPE_PCO_DIMAX_STD) {
         pco_update_baud_rate (pco);
-        pco_retrieve_cl_config(pco);
+        pco_retrieve_cl_config (pco);
         pco->transfer.DataFormat = PCO_CL_DATAFORMAT_2x12;
-        pco_set_cl_config(pco);
+        pco_set_cl_config (pco);
     }
 
     return pco;
 
 no_pco:
-    free(pco);
+    free (pco);
     return NULL;
 }
 
@@ -2244,11 +2395,14 @@ no_pco:
  *
  * @param pco A #pco_handle.
  */
-void pco_destroy(pco_handle pco)
+void
+pco_destroy (pco_handle pco)
 {
-    pco_set_rec_state(pco, 0);
+    pco_set_rec_state (pco, 0);
+
     for (int i = 0; i < pco->num_ports; i++)
-        clSerialClose(pco->serial_refs[i]);
-    free(pco);
+        clSerialClose (pco->serial_refs[i]);
+
+    free (pco);
 }
 
