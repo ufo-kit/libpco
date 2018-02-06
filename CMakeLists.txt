@@ -38,9 +38,7 @@ configure_file(${CMAKE_SOURCE_DIR}/src/config.h.in
 
 add_library(pco SHARED src/libpco.c)
 
-target_link_libraries(pco
-                      ${FgLib5_LIBRARY}
-                      ${clsersis_LIBRARY})
+target_link_libraries(pco ${FgLib5_LIBRARY} ${clsersis_LIBRARY})
 
 set_target_properties(pco PROPERTIES
                       VERSION "${LIBPCO_VERSION_MAJOR}.${LIBPCO_VERSION_MINOR}"
@@ -55,11 +53,8 @@ install(TARGETS pco
 install(FILES src/libpco.h src/sc2_defs.h src/PCO_err.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libpco)
 
-#{{{ Test binary
-if (FGLIB5_FOUND)
-    add_executable(diagnose test/main.c)
-    target_link_libraries(diagnose pco ${FGLIB5_LIBRARY} ${CLSERME4_LIBRARY})
-endif()
+add_executable(diagnose test/main.c)
+target_link_libraries(diagnose pco ${FgLib5_LIBRARY} ${clsersis_LIBRARY})
 #}}}
 #{{{ Documentation
 if(DOXYGEN_FOUND)
