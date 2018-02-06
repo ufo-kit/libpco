@@ -411,30 +411,26 @@ pco_update_baud_rate (pco_handle pco)
 static unsigned int
 pco_scan_and_set_baud_rate (pco_handle pco)
 {
-    static uint32_t baudrates[9][2] = {
-        { CL_BAUDRATE_115200, 115200 },
-        { CL_BAUDRATE_57600, 57600 },
-        { CL_BAUDRATE_38400, 38400 },
-        { CL_BAUDRATE_19200, 19200 },
-        { CL_BAUDRATE_9600, 9600 },
-        { 0, 0 }
+    unsigned baudrates[]  = {
+        CL_BAUDRATE_921600, CL_BAUDRATE_460800, CL_BAUDRATE_230400,
+        CL_BAUDRATE_115200, CL_BAUDRATE_57600, CL_BAUDRATE_38400,
+        CL_BAUDRATE_19200, CL_BAUDRATE_9600, 0,
     };
 
-    unsigned int err = PCO_NOERROR+1;
-
-    SC2_Simple_Telegram com;
+    unsigned int err = PCO_NOERROR + 1;
+    unsigned int supported;
     SC2_Camera_Type_Response resp;
-    com.wCode = GET_CAMERA_TYPE;
-    com.wSize = sizeof(SC2_Simple_Telegram);
-    int idx = 0;
+    SC2_Simple_Telegram com = { .wCode = GET_CAMERA_TYPE, .wSize = sizeof (SC2_Simple_Telegram) };
 
-    /* Find baudrate at which we can communicate (most likely 9600) */
-    while ((err != PCO_NOERROR) && (baudrates[idx][0] != 0)) {
-        CHECK_ERR_CL (clSetBaudRate (pco->serial_ref, baudrates[idx][0]));
+    CHECK_ERR_CL (clGetSupportedBaudRates (pco->serial_ref, &supported));
+
+    for (int i = 0; baudrates[i] != 0 && err != PCO_NOERROR; i++) {
+        if (!(baudrates[i] & supported))
+            continue;
+
+        CHECK_ERR_CL (clSetBaudRate (pco->serial_ref, baudrates[i]));
         pco_msleep (100);
-        err = pco_control_command(pco, &com, sizeof(com), &resp, sizeof(SC2_Camera_Type_Response));
-        if (err != PCO_NOERROR)
-            idx++;
+        err = pco_control_command (pco, &com, sizeof(com), &resp, sizeof(SC2_Camera_Type_Response));
     }
 
     return err;
