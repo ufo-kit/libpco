@@ -405,7 +405,7 @@ pco_update_baud_rate (pco_handle pco)
     };
 
     if (pco_control_command (pco, &req, sizeof (req), &resp, sizeof (resp)) != PCO_NOERROR)
-        clSetBaudRate (pco->serial_ref, CL_BAUDRATE_115200);
+        CHECK_ERR_CL (clSetBaudRate (pco->serial_ref, CL_BAUDRATE_115200));
 }
 
 static unsigned int
@@ -430,7 +430,7 @@ pco_scan_and_set_baud_rate (pco_handle pco)
 
     /* Find baudrate at which we can communicate (most likely 9600) */
     while ((err != PCO_NOERROR) && (baudrates[idx][0] != 0)) {
-        clSetBaudRate (pco->serial_ref, baudrates[idx][0]);
+        CHECK_ERR_CL (clSetBaudRate (pco->serial_ref, baudrates[idx][0]));
         pco_msleep (100);
         err = pco_control_command(pco, &com, sizeof(com), &resp, sizeof(SC2_Camera_Type_Response));
         if (err != PCO_NOERROR)
@@ -502,7 +502,7 @@ pco_reset_serial (pco_handle pco)
         clSerialClose(pco->serial_refs[i]);
 
     for (int i = 0; i < pco->num_ports; i++)
-        clSerialInit(i, &pco->serial_refs[i]);
+        CHECK_ERR_CL (clSerialInit(i, &pco->serial_refs[i]));
 
     pco->serial_ref = pco->serial_refs[0];
     return 0;
@@ -530,8 +530,7 @@ pco_control_command (pco_handle pco, void *buffer_in, uint32_t size_in, void *bu
     uint32_t err = PCO_NOERROR;
     int cl_err = CL_OK;
 
-    cl_err = clFlushPort (pco->serial_ref);
-    CHECK_ERR_CL(cl_err);
+    CHECK_ERR_CL (clFlushPort (pco->serial_ref));
 
     com_out = 0;
     com_in = *((uint16_t *) buffer_in);
@@ -543,8 +542,7 @@ pco_control_command (pco_handle pco, void *buffer_in, uint32_t size_in, void *bu
     if (err != PCO_NOERROR)
         fprintf (stderr, "Something happened... but is ignored in the original code\n");
 
-    cl_err = clSerialWrite (pco->serial_ref, (char *) buffer_in, &size, pco->timeouts.command);
-    CHECK_ERR_CL(cl_err);
+    CHECK_ERR_CL (clSerialWrite (pco->serial_ref, (char *) buffer_in, &size, pco->timeouts.command));
     size = sizeof(uint16_t) * 2;
 
     pco_msleep(100);
@@ -570,8 +568,7 @@ pco_control_command (pco_handle pco, void *buffer_in, uint32_t size_in, void *bu
     if ((size < 0) || (com_in != (com_out & 0xFF3F)))
         return PCO_ERROR_DRIVER_IOFAILURE | PCO_ERROR_DRIVER_CAMERALINK;
 
-    cl_err = clSerialRead (pco->serial_ref, (char *) &buffer[sizeof(uint16_t)*2], &size, pco->timeouts.command*2);
-    CHECK_ERR_CL(cl_err);
+    CHECK_ERR_CL (clSerialRead (pco->serial_ref, (char *) &buffer[sizeof(uint16_t)*2], &size, pco->timeouts.command*2));
 
     if (cl_err < 0)
         return PCO_ERROR_DRIVER_IOFAILURE | PCO_ERROR_DRIVER_CAMERALINK;
